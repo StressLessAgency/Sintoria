@@ -1,3 +1,4 @@
+import MotionBackground from '@/components/motion-bg'
 import Nav from '@/components/nav'
 import Hero from '@/components/hero'
 import Treatments from '@/components/treatments'
@@ -10,6 +11,7 @@ import Footer from '@/components/footer'
 export default function Home() {
   return (
     <>
+      <MotionBackground />
       <Nav />
       <main>
         <Hero />

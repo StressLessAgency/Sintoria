@@ -15,7 +15,7 @@
 
   :root {
     --font-body: 'Satoshi', system-ui, sans-serif;
-    --color-bg: #f8f3ec;
+    --color-bg: #f5ede0;
     --color-surface: #ffffff;
     --color-text: #1e1916;
     --color-text-muted: #6b5f58;
@@ -29,8 +29,8 @@
   }
 
   [data-theme="dark"] {
-    --color-bg: #0f0c0a;
-    --color-surface: #1a1612;
+    --color-bg: #110e0b;
+    --color-surface: #1c1814;
     --color-text: #e8e0d8;
     --color-text-muted: #9a8e85;
     --color-text-faint: #5a5248;
