@@ -3,16 +3,52 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardTitle, CardDescription } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 
 const SERVICES = [
-  { icon: '◈', name: 'Hot Stone Ritual', duration: '90 min', desc: 'Heated basalt stones melt tension at the cellular level while grounding your energy in deep, meditative warmth.' },
-  { icon: '◇', name: 'Swedish Massage', duration: '60 / 90 min', desc: 'Long, flowing strokes orchestrated to ease tension, improve circulation, and invite profound rest into every layer of your being.' },
-  { icon: '◉', name: 'Deep Tissue', duration: '75 / 90 min', desc: 'Targeted, intentional pressure that reaches deep muscle strata — breaking adhesions and releasing patterns your body has held for years.' },
-  { icon: '✦', name: 'Aromatherapy', duration: '60 min', desc: 'Curated organic essential oils and gentle techniques for a full sensory journey — calming mind, body, and the spaces in between.' },
-  { icon: '◎', name: 'Prenatal', duration: '60 min', desc: 'Specialist techniques honoring the sacred journey of pregnancy — gentle, supportive, and tailored to each trimester.' },
-  { icon: '⬡', name: 'Couples Session', duration: '90 min', desc: 'Two therapists, one tranquil room — a shared ritual of healing designed to restore harmony between two people.' },
+  {
+    icon: '◈',
+    name: 'The 10-Series',
+    duration: '10 sessions',
+    desc: 'The complete arc of structural integration. Each session addresses a distinct layer — sleeve, core, and integration — systematically unwinding compensation patterns and restoring your body\'s relationship with gravity.',
+    cta: 'Begin the series',
+  },
+  {
+    icon: '◇',
+    name: 'Single Integration Session',
+    duration: '75 – 90 min',
+    desc: 'A focused session for those already familiar with SI work, or exploring the approach. We assess your structure, address the most pressing patterns, and map a path forward.',
+    cta: 'Book a session',
+  },
+  {
+    icon: '◉',
+    name: 'Movement Assessment',
+    duration: '60 min',
+    desc: 'A detailed functional movement screen — how you stand, walk, breathe, and load your joints. We identify where your body compensates and what\'s driving it, before hands ever meet tissue.',
+    cta: 'Assess your movement',
+  },
+  {
+    icon: '✦',
+    name: 'Athletic Performance Series',
+    duration: '4 – 6 sessions',
+    desc: 'Built for runners, cyclists, and field athletes hitting structural ceilings. We address the fascial restrictions and postural patterns limiting your efficiency, power transfer, and recovery.',
+    cta: 'Elevate your training',
+  },
+  {
+    icon: '◎',
+    name: 'Desk Worker Reset',
+    duration: '3-session series',
+    desc: 'For those whose bodies have adapted — and protested — to years of seated work. Chronic neck tension, rounded shoulders, compressed hip flexors: we address the root, not the symptom.',
+    cta: 'Reset your posture',
+  },
+  {
+    icon: '⬡',
+    name: 'Post-Injury Restoration',
+    duration: 'Custom series',
+    desc: 'After injury, the body protects itself — often long after it needs to. We gently release the guarding, address the compensatory patterns that formed around the wound, and restore full function.',
+    cta: 'Restore your body',
+  },
 ]
 
 const fadeUp = {
@@ -29,14 +65,8 @@ function ServiceCard({ s, i }: { s: typeof SERVICES[0]; i: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-60px' })
   return (
-    <motion.div
-      ref={ref}
-      initial="hidden"
-      animate={inView ? 'show' : 'hidden'}
-      variants={fadeUp}
-      transition={{ delay: i * 0.07 }}
-      whileHover={{ y: -4, scale: 1.01, transition: { duration: 0.2 } }}
-    >
+    <motion.div ref={ref} initial="hidden" animate={inView ? 'show' : 'hidden'} variants={fadeUp}
+      transition={{ delay: i * 0.07 }} whileHover={{ y: -4, scale: 1.01, transition: { duration: 0.2 } }}>
       <Card className="flex flex-col gap-4 h-full cursor-default">
         <div className="flex items-start justify-between">
           <span className="text-2xl leading-none" style={{ color: '#b55a3a' }}>{s.icon}</span>
@@ -48,14 +78,10 @@ function ServiceCard({ s, i }: { s: typeof SERVICES[0]; i: number }) {
         <CardTitle className="heading-serif">{s.name}</CardTitle>
         <Separator />
         <CardDescription className="flex-1 text-sm leading-relaxed">{s.desc}</CardDescription>
-        <motion.div
-          initial={{ opacity: 0, x: -6 }}
-          whileHover={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-2 text-xs font-medium"
-          style={{ color: '#b55a3a' }}
-        >
-          Book this treatment <ArrowRight size={12} />
-        </motion.div>
+        <motion.a href="#book" initial={{ opacity: 0.6, x: -4 }} whileHover={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-2 text-xs font-medium" style={{ color: '#b55a3a' }}>
+          {s.cta} <ArrowRight size={12} />
+        </motion.a>
       </Card>
     </motion.div>
   )
@@ -65,15 +91,17 @@ export default function Treatments() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
   return (
-    <section id="treatments" className="section" style={{ background: 'var(--color-bg)' }}>
+    <section id="treatments" className="section" style={{ background: 'transparent' }}>
       <div className="container-default">
         <motion.div ref={ref} variants={stagger(0.1)} initial="hidden" animate={inView ? 'show' : 'hidden'} className="mb-16 max-w-xl">
-          <motion.div variants={fadeUp} className="mb-4"><Badge>Treatments</Badge></motion.div>
-          <motion.h2 variants={blurUp} className="heading-display mb-4" style={{ fontSize: 'clamp(34px, 5vw, 62px)', color: 'var(--color-text)' }}>
-            The Treatments
+          <motion.div variants={fadeUp} className="mb-4"><Badge>The Work</Badge></motion.div>
+          <motion.h2 variants={blurUp} className="heading-display mb-4"
+            style={{ fontSize: 'clamp(34px, 5vw, 62px)', color: 'var(--color-text)' }}>
+            How We Work Together
           </motion.h2>
-          <motion.p variants={fadeUp} className="body-text" style={{ fontSize: '16px', maxWidth: '52ch' }}>
-            Therapeutic bodywork rooted in intention. Each session is a conversation between skilled hands and your body&apos;s own wisdom.
+          <motion.p variants={fadeUp} className="body-text" style={{ fontSize: '16px', maxWidth: '55ch' }}>
+            Structural integration is cumulative, intentional work. Each session builds on the last —
+            addressing deeper layers of fascia, posture, and movement as your body becomes ready to change.
           </motion.p>
         </motion.div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

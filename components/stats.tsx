@@ -3,10 +3,10 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 
 const STATS = [
-  { value: '8+', label: 'Years of practice' },
-  { value: '4,200+', label: 'Sessions completed' },
-  { value: '100%', label: 'Organic botanicals' },
-  { value: '97%', label: 'Client return rate' },
+  { value: '10+', label: 'Years of practice' },
+  { value: '3,800+', label: 'Sessions completed' },
+  { value: 'KMI · ATSI', label: 'Certified modalities' },
+  { value: '94%', label: 'Client series completion' },
 ]
 
 export default function Stats() {
@@ -18,7 +18,7 @@ export default function Stats() {
         {STATS.map((s, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ delay: i * 0.09, type: 'spring', damping: 28, stiffness: 200 }} className="text-center">
-            <p className="heading-display" style={{ fontSize: 'clamp(30px, 4vw, 50px)', color: '#d4745a', lineHeight: 1 }}>
+            <p className="heading-display" style={{ fontSize: 'clamp(26px, 3.5vw, 44px)', color: '#d4745a', lineHeight: 1 }}>
               {s.value}
             </p>
             <p className="text-xs tracking-wider uppercase font-medium mt-2" style={{ color: '#4a3f38' }}>

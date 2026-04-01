@@ -5,6 +5,7 @@ import Treatments from '@/components/treatments'
 import Philosophy from '@/components/philosophy'
 import Stats from '@/components/stats'
 import Testimonials from '@/components/testimonials'
+import FAQ from '@/components/faq'
 import NewClient from '@/components/new-client'
 import Footer from '@/components/footer'
 
@@ -19,6 +20,7 @@ export default function Home() {
         <Philosophy />
         <Stats />
         <Testimonials />
+        <FAQ />
         <NewClient />
       </main>
       <Footer />

@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { label: 'Treatments', href: '#treatments' },
   { label: 'Philosophy', href: '#philosophy' },
   { label: 'Testimonials', href: '#testimonials' },
+  { label: 'FAQ', href: '#faq' },
 ]
 
 export default function Nav() {
