@@ -1,47 +1,33 @@
-import * as React from 'react'
-import { Slot } from '@radix-ui/react-slot'
-import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { Slot } from "@radix-ui/react-slot";
+import React from "react";
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[8px] text-sm font-medium transition-all duration-[180ms] ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer border-none',
+  "inline-flex items-center justify-center font-body text-xs tracking-[0.18em] uppercase transition-all duration-300 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra",
   {
     variants: {
       variant: {
-        default:
-          'bg-terra text-white shadow-[0_1px_3px_rgba(181,90,58,0.3)] hover:bg-terra-dark hover:shadow-[0_4px_14px_rgba(181,90,58,0.38)] hover:-translate-y-px',
-        ghost:
-          'bg-transparent text-charcoal-muted border border-charcoal/15 hover:bg-black/5 hover:border-charcoal/25',
-        outline:
-          'border border-terra/30 bg-transparent text-terra hover:bg-terra/8',
-        white:
-          'bg-white text-terra font-semibold shadow-[0_4px_20px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,0,0,0.22)]',
-      },
-      size: {
-        default: 'h-10 px-6 py-2',
-        sm: 'h-8 px-4 text-xs',
-        lg: 'h-12 px-8 text-[15px] rounded-[10px]',
-        icon: 'h-9 w-9',
+        primary:   "bg-[#A0522D] text-[#F5F0E8] px-8 py-3.5 hover:bg-[#7A3A1A] hover:-translate-y-0.5",
+        secondary: "border border-[rgba(160,82,45,0.35)] text-[#7A6A5A] px-8 py-3.5 hover:border-[#A0522D] hover:text-[#A0522D]",
+        ghost:     "text-[#7A6A5A] hover:text-[#A0522D] px-0 gap-2",
+        gradient:  "btn-gradient-animate text-[#F5F0E8] px-8 py-3.5 hover:-translate-y-0.5",
       },
     },
-    defaultVariants: { variant: 'default', size: 'default' },
+    defaultVariants: { variant: "primary" },
   }
-)
+);
 
-export interface ButtonProps
+interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  asChild?: boolean
+  asChild?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button'
-    return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
-    )
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, asChild, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return <Comp ref={ref} className={cn(buttonVariants({ variant }), className)} {...props} />;
   }
-)
-Button.displayName = 'Button'
-
-export { Button, buttonVariants }
+);
+Button.displayName = "Button";

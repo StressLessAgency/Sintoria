@@ -1,187 +1,85 @@
-/* Art direction: luxury therapeutic spa → warm restraint
-   Palette: terracotta accent on warm cream surfaces
-   Typography: Cormorant Garamond (display) + Satoshi (body)
-   Density: spacious editorial */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Jost:wght@200;300;400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Satoshi from Fontshare */
-@import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&display=swap');
-
-@layer base {
-  *, *::before, *::after { box-sizing: border-box; }
-
-  :root {
-    --font-body: 'Satoshi', system-ui, sans-serif;
-    --color-bg: #f5ede0;
-    --color-surface: #ffffff;
-    --color-text: #1e1916;
-    --color-text-muted: #6b5f58;
-    --color-text-faint: #8a7a72;
-    --color-border: rgba(30,25,22,0.1);
-    --color-terra: #b55a3a;
-    --shadow-card: 0 1px 3px rgba(30,25,22,0.06), 0 4px 12px rgba(30,25,22,0.03);
-    --shadow-card-hover: 0 4px 24px rgba(181,90,58,0.12), 0 1px 4px rgba(30,25,22,0.08);
-    --radius-card: 12px;
-    --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  [data-theme="dark"] {
-    --color-bg: #110e0b;
-    --color-surface: #1c1814;
-    --color-text: #e8e0d8;
-    --color-text-muted: #9a8e85;
-    --color-text-faint: #5a5248;
-    --color-border: rgba(232,224,216,0.08);
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
-    --shadow-card-hover: 0 4px 24px rgba(181,90,58,0.18), 0 1px 4px rgba(0,0,0,0.3);
-  }
-
-  html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    scroll-behavior: smooth;
-    scroll-padding-top: 4rem;
-  }
-
-  body {
-    font-family: var(--font-body);
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    min-height: 100dvh;
-    line-height: 1.6;
-    transition: background-color 0.3s ease, color 0.3s ease;
-  }
-
-  h1, h2, h3, h4, h5, h6 { text-wrap: balance; line-height: 1.15; }
-  p, li { text-wrap: pretty; }
-
-  ::selection {
-    background: rgba(181,90,58,0.2);
-    color: var(--color-text);
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--color-terra);
-    outline-offset: 3px;
-    border-radius: 4px;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: var(--color-bg); }
-  ::-webkit-scrollbar-thumb { background: rgba(181,90,58,0.35); border-radius: 99px; }
+:root {
+  --cream:     #F5F0E8;
+  --cream-warm:#EDE5D4;
+  --sand:      #D9C9B0;
+  --espresso:  #2C1F14;
+  --stone:     #7A6A5A;
+  --stone-light:#A89880;
+  --moss:      #3D4A30;
+  --moss-light:#8A9878;
+  --gold:      #B8922A;
+  --blush:     #C8967A;
+  --terra:     #A0522D;
+  --terra-deep:#7A3A1A;
 }
 
-@layer components {
-  .heading-display {
-    font-family: var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
-    font-weight: 400;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .heading-serif {
-    font-family: var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
-    font-weight: 500;
-    line-height: 1.2;
-  }
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 
-  .body-text {
-    font-family: var(--font-body);
-    color: var(--color-text-muted);
-    line-height: 1.7;
-  }
+body {
+  background-color: var(--cream);
+  color: var(--espresso);
+  font-family: 'Jost', system-ui, sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
 
-  .section {
-    padding: clamp(64px, 8vw, 128px) clamp(20px, 5vw, 80px);
-  }
+::selection {
+  background: rgba(168, 82, 45, 0.15);
+  color: var(--espresso);
+}
 
-  .container-default {
-    max-width: 1200px;
-    margin-inline: auto;
-  }
+:focus-visible {
+  outline: 2px solid var(--terra);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
 
-  .quote-line {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #b55a3a, transparent);
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
+}
 
-  /* shadcn Card */
-  .sc-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-card);
-    transition: box-shadow var(--transition), border-color var(--transition), transform var(--transition);
-    padding: 1.5rem;
-  }
-  .sc-card:hover {
-    box-shadow: var(--shadow-card-hover);
-    border-color: rgba(181,90,58,0.28);
-    transform: translateY(-2px);
-  }
+/* 21st.dev-style animated gradient button */
+.btn-gradient-animate {
+  background: linear-gradient(
+    120deg,
+    var(--terra) 0%,
+    var(--blush) 40%,
+    var(--terra) 80%,
+    var(--terra-deep) 100%
+  );
+  background-size: 300% 100%;
+  animation: gradientShift 4s ease infinite;
+}
 
-  /* shadcn Badge */
-  .terra-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 14px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    background: rgba(181,90,58,0.08);
-    color: #b55a3a;
-    border: 1px solid rgba(181,90,58,0.2);
-  }
-  .terra-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #b55a3a;
-    box-shadow: 0 0 0 2px rgba(181,90,58,0.25);
-  }
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
-  /* Gradient CTA button (21st.dev) */
-  .btn-gradient {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, #b55a3a, #d4745a, #b55a3a, #8b3f27);
-    background-size: 300% 300%;
-    animation: gradient-x 5s ease infinite;
-    color: #fff;
-    padding: 14px 36px;
-    font-size: 15px;
-    font-weight: 500;
-    font-family: var(--font-body);
-    border-radius: 10px;
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 4px 20px rgba(181,90,58,0.35);
-    transition: box-shadow var(--transition), transform var(--transition);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .btn-gradient:hover {
-    box-shadow: 0 8px 28px rgba(181,90,58,0.5);
-    transform: translateY(-2px);
-  }
-  .btn-gradient::after {
-    content: '';
-    position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 60%);
-    border-radius: inherit;
-    pointer-events: none;
-  }
+/* Shimmer skeleton */
+.shimmer {
+  background: linear-gradient(90deg, #EDE5D4 25%, #F5F0E8 50%, #EDE5D4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }

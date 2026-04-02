@@ -1,30 +1,21 @@
-import type { Metadata } from 'next'
-import { Cormorant_Garamond } from 'next/font/google'
-import './globals.css'
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-cormorant',
-  display: 'swap',
-})
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Sintonia Bodywork — Therapeutic Bodywork',
-  description:
-    'Sintonia — attunement in Portuguese — is the art of coming back into harmony with yourself. Every session is crafted to bring you back to yourself through skilled hands and intentional space.',
+  title: "Sintoria Bodywork — St. Petersburg, FL",
+  description: "Therapeutic bodywork rooted in intention. Massage & wellness in St. Pete.",
   openGraph: {
-    title: 'Sintonia Bodywork — Therapeutic Bodywork',
-    description: 'Skilled hands. Intentional space. The kind of quiet only the body can offer the mind.',
-    type: 'website',
+    title: "Sintoria Bodywork",
+    description: "Where the body finds its axis.",
+    url: "https://sintoriabodywork.vercel.app",
+    siteName: "Sintoria Bodywork",
   },
-}
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cormorant.variable} suppressHydrationWarning>
+    <html lang="en">
       <body>{children}</body>
     </html>
-  )
+  );
 }

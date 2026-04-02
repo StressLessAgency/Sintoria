@@ -1,29 +1,25 @@
-import MotionBackground from '@/components/motion-bg'
-import Nav from '@/components/nav'
-import Hero from '@/components/hero'
-import Treatments from '@/components/treatments'
-import Philosophy from '@/components/philosophy'
-import Stats from '@/components/stats'
-import Testimonials from '@/components/testimonials'
-import FAQ from '@/components/faq'
-import NewClient from '@/components/new-client'
-import Footer from '@/components/footer'
+import Nav         from "@/components/sections/nav";
+import Hero        from "@/components/sections/hero";
+import MarqueeBand from "@/components/sections/marquee-band";
+import Treatments  from "@/components/sections/treatments";
+import Philosophy  from "@/components/sections/philosophy";
+import Stats       from "@/components/sections/stats";
+import Testimonials from "@/components/sections/testimonials";
+import Booking     from "@/components/sections/booking";
+import Footer      from "@/components/sections/footer";
 
 export default function Home() {
   return (
-    <>
-      <MotionBackground />
+    <main>
       <Nav />
-      <main>
-        <Hero />
-        <Treatments />
-        <Philosophy />
-        <Stats />
-        <Testimonials />
-        <FAQ />
-        <NewClient />
-      </main>
+      <Hero />
+      <MarqueeBand />
+      <Treatments />
+      <Philosophy />
+      <Stats />
+      <Testimonials />
+      <Booking />
       <Footer />
-    </>
-  )
+    </main>
+  );
 }
