@@ -3,10 +3,10 @@ import { motion } from "framer-motion";
 import { useInView } from "@/hooks/use-in-view";
 
 const stats = [
-  { n:"500+", l:"Sessions Delivered" },
-  { n:"4.98", l:"Average Rating" },
-  { n:"6",    l:"Years in Practice" },
-  { n:"100%", l:"Organic Products" },
+  { n:"500+", l:"Structures Transformed" },
+  { n:"4.98", l:"Client Rating" },
+  { n:"10",   l:"Series Protocol" },
+  { n:"100%", l:"Fascial Focus" },
 ];
 
 export default function Stats() {

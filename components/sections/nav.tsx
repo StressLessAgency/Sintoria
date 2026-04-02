@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-const links = ["Treatments", "Philosophy", "Stories", "Reserve"];
+const links = ["Services", "Philosophy", "Stories", "Reserve"];
 
 // Sintoria SVG logo mark — geometric leaf/spine mark
 function SintoriaLogo() {
@@ -20,8 +20,8 @@ function SintoriaLogo() {
       {/* Wordmark */}
       <text x="40" y="21" fontFamily="'Cormorant Garamond', serif" fontSize="14"
             fontWeight="400" letterSpacing="2.5" fill="currentColor">SINTORIA</text>
-      <text x="40" y="30" fontFamily="'Jost', sans-serif" fontSize="6.5"
-            fontWeight="300" letterSpacing="3.5" fill="currentColor" opacity="0.55">BODYWORK</text>
+      <text x="40" y="30" fontFamily="'Jost', sans-serif" fontSize="6"
+            fontWeight="300" letterSpacing="3" fill="currentColor" opacity="0.55">STRUCTURAL BODYWORK</text>
     </svg>
   );
 }

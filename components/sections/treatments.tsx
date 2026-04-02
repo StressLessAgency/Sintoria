@@ -3,24 +3,24 @@ import { motion } from "framer-motion";
 import { useInView } from "@/hooks/use-in-view";
 
 const treatments = [
-  { num:"01", name:"Hot Stone Ritual",     price:"$135", dur:"75–90 min", featured:true,
-    desc:"Heated basalt stones melt tension at the cellular level while grounding your energy in deep, meditative warmth." },
-  { num:"02", name:"Swedish Relaxation",   price:"$95",  dur:"60–90 min",
-    desc:"Long, flowing strokes orchestrated to ease tension, improve circulation, and invite profound rest." },
-  { num:"03", name:"Deep Tissue Therapy",  price:"$110", dur:"60–90 min",
-    desc:"Targeted, intentional pressure that reaches deep muscle strata — breaking adhesions held for years." },
-  { num:"04", name:"Aromatherapy Bliss",   price:"$105", dur:"60 min",
-    desc:"Curated organic essential oils and gentle techniques for a full sensory journey — body, mind, and the spaces between." },
-  { num:"05", name:"Prenatal Care",        price:"$100", dur:"60 min",
-    desc:"Specialist techniques honouring the sacred journey of pregnancy — gentle, supportive, trimester-tailored." },
-  { num:"06", name:"Couples Sanctuary",    price:"$220", dur:"60–90 min",
-    desc:"Two therapists, one tranquil room — a shared ritual of healing designed to restore harmony between two people." },
+  { num:"01", name:"The 10-Series",            price:"$1,650", dur:"10 × 75 min", featured:true,
+    desc:"The foundational protocol. Ten sessions, each building on the last — systematically reorganizing your fascia to bring your structure into balance with gravity." },
+  { num:"02", name:"Structural Single Session", price:"$185",   dur:"75 min",
+    desc:"Targeted structural work for a specific area of restriction or compensation. Ideal for maintenance or focused problem-solving between series." },
+  { num:"03", name:"Postural Assessment",       price:"$95",    dur:"45 min",
+    desc:"A detailed reading of your structure — identifying imbalances, compensation patterns, and the relationships between where you feel pain and where it originates." },
+  { num:"04", name:"Movement Integration",      price:"$145",   dur:"60 min",
+    desc:"Hands-on fascial work paired with guided movement cues — retraining your nervous system to sustain the structural changes made in session." },
+  { num:"05", name:"Post-Surgical Recovery",    price:"$165",   dur:"60 min",
+    desc:"Specialized work with scar tissue and compensatory patterns that develop after surgery — restoring mobility and resolving fascial adhesions." },
+  { num:"06", name:"Athletic Optimization",     price:"$185",   dur:"75 min",
+    desc:"Structural work tailored for runners, cyclists, and movement athletes — addressing the fascial patterns that limit range, power, and recovery." },
 ];
 
 export default function Treatments() {
   const { ref, inView } = useInView();
   return (
-    <section id="treatments" className="bg-[#F5F0E8] py-24 px-6 md:px-12">
+    <section id="services" className="bg-[#F5F0E8] py-24 px-6 md:px-12">
       <div className="max-w-[1200px] mx-auto">
         {/* Header */}
         <div ref={ref} className="flex items-end justify-between mb-14">
@@ -30,11 +30,11 @@ export default function Treatments() {
           >
             <div className="flex items-center gap-3 mb-4">
               <span className="w-6 h-px bg-[#A0522D]" />
-              <span className="text-[0.6rem] tracking-[0.28em] uppercase text-[#A0522D]">Our Treatments</span>
+              <span className="text-[0.6rem] tracking-[0.28em] uppercase text-[#A0522D]">Services</span>
             </div>
             <h2 className="font-display font-light text-[#2C1F14] leading-[1.1]"
                 style={{ fontSize:"clamp(2.2rem,4vw,3.8rem)" }}>
-              Crafted for <em className="italic text-[#A0522D]">Your Body</em>
+              The Work <em className="italic text-[#A0522D]">We Do</em>
             </h2>
           </motion.div>
           <span className="hidden md:block font-display italic text-[#A0522D] select-none pointer-events-none"

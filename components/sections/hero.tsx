@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
-const words = ["Where", "the", "Body", "Finds", "Its", "Center."];
+const words = ["Where", "Structure", "Meets", "Its", "Alignment."];
 
 export default function Hero() {
   return (
@@ -33,7 +33,7 @@ export default function Hero() {
           >
             <span className="w-8 h-px bg-[#A0522D]" />
             <span className="text-[0.62rem] tracking-[0.3em] uppercase text-[#A0522D] font-light">
-              St. Petersburg, FL · Est. 2019
+              Structural Integration · St. Petersburg, FL
             </span>
           </motion.div>
 
@@ -44,7 +44,7 @@ export default function Hero() {
             {words.map((word, i) => (
               <motion.span
                 key={i}
-                className={`inline-block mr-[0.2em] ${i === 4 ? "italic text-[#A0522D]" : ""}`}
+                className={`inline-block mr-[0.2em] ${i === 3 ? "italic text-[#A0522D]" : ""}`}
                 initial={{ opacity: 0, y: 40, filter: "blur(6px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 transition={{ delay: 0.3 + i * 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -60,8 +60,8 @@ export default function Hero() {
             transition={{ delay: 1.0, duration: 0.7 }}
             className="text-[0.93rem] leading-[1.95] text-[#7A6A5A] font-light max-w-[400px] mb-10"
           >
-            Therapeutic bodywork crafted around your body's unique language.
-            Each session is a conversation between skilled hands and the wisdom your body already holds.
+            Your body is a structure shaped by gravity, habit, and history.
+            Structural integration works with your fascia to restore balance, ease, and efficient movement — from the ground up.
           </motion.p>
 
           <motion.div
@@ -71,11 +71,11 @@ export default function Hero() {
             className="flex flex-wrap items-center gap-5"
           >
             <Button variant="gradient" asChild>
-              <a href="#reserve">Book a Session</a>
+              <a href="#reserve">Begin Your Series</a>
             </Button>
             <Button variant="ghost" asChild>
-              <a href="#treatments" className="flex items-center gap-2">
-                View Treatments
+              <a href="#services" className="flex items-center gap-2">
+                Explore the Work
                 <motion.span
                   animate={{ x: [0, 4, 0] }}
                   transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
@@ -93,7 +93,7 @@ export default function Hero() {
             transition={{ delay: 1.4, duration: 0.8 }}
             className="flex gap-8 mt-14 pt-8 border-t border-[rgba(160,82,45,0.12)]"
           >
-            {[["500+","Sessions"], ["4.98","Rating"], ["6 yrs","Experience"]].map(([n, l]) => (
+            {[["500+","Clients Aligned"], ["4.98","Rating"], ["10-Series","Certified"]].map(([n, l]) => (
               <div key={l}>
                 <div className="font-display text-2xl font-light text-[#A0522D]">{n}</div>
                 <div className="text-[0.62rem] tracking-[0.16em] uppercase text-[#A89880] mt-0.5">{l}</div>
@@ -127,10 +127,10 @@ export default function Hero() {
           >
             <div className="text-[#A0522D] text-sm mb-1">★★★★★</div>
             <div className="font-display italic text-[#2C1F14] text-lg leading-snug">
-              "Utterly transformative."
+              "I finally stand without effort."
             </div>
             <div className="text-[0.62rem] tracking-[0.14em] uppercase text-[#A89880] mt-1.5">
-              Sarah M. · Regular client
+              David K. · 10-series graduate
             </div>
           </motion.div>
 

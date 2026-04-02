@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "@/hooks/use-in-view";
 
-const quoteWords = "True rest is not the absence of motion — it is the presence of peace.".split(" ");
+const quoteWords = "When structure is balanced, the body moves without effort — and pain loses its reason to exist.".split(" ");
 
 export default function Philosophy() {
   const { ref, inView } = useInView(0.2);
@@ -37,9 +37,8 @@ export default function Philosophy() {
             transition={{ delay:1.2, duration:0.8 }}
             className="text-[0.85rem] leading-[2] text-[rgba(237,229,212,0.45)] font-light mt-8 max-w-[440px]"
           >
-            Sintoria — a word built on <em className="italic text-[rgba(200,150,122,0.7)]">sintonia</em>, the
-            Portuguese for attunement. We believe every body carries its own wisdom.
-            Our role is to listen, and respond.
+            Sintoria — built on <em className="italic text-[rgba(200,150,122,0.7)]">sintonia</em>, the
+            Portuguese for attunement. Structural integration doesn't chase symptoms. It addresses the fascial web that shapes your posture, your movement, and your pain. The goal is a body organized around its vertical axis — efficient, balanced, at ease in gravity.
           </motion.p>
           <motion.div
             initial={{ opacity:0 }} animate={inView ? { opacity:1 } : {}}
@@ -71,7 +70,7 @@ export default function Philosophy() {
           >
             <div className="font-display italic text-[rgba(200,150,122,0.35)]"
                  style={{ fontSize:"clamp(1rem,2vw,1.3rem)" }}>
-              Licensed · Certified · Intentional
+              Certified · Structural Integration · Fascial Specialist
             </div>
           </motion.div>
         </div>

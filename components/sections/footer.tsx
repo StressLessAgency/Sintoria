@@ -11,7 +11,7 @@ export default function Footer() {
             </div>
             <div className="text-[0.6rem] tracking-[0.18em] text-[rgba(245,240,232,0.28)] mb-4">sintoriabodywork.com</div>
             <p className="font-display italic text-[0.9rem] text-[rgba(245,240,232,0.35)] leading-[1.75] max-w-[220px] mb-6">
-              Come as you are.<br/>Leave as you were meant to be.
+              Your body already knows<br/>where it belongs in space.
             </p>
             <div className="flex gap-2">
               {["ig","fb","in"].map(s => (
@@ -24,9 +24,9 @@ export default function Footer() {
           </div>
 
           {[
-            { title:"Treatments", links:["Hot Stone Ritual","Swedish Relaxation","Deep Tissue","Aromatherapy","Couples Session"] },
-            { title:"Studio",     links:["Philosophy","Our Therapists","Gift Cards","Memberships"] },
-            { title:"Visit",      links:["sintoriabodywork.com","St. Petersburg, FL","hello@sintoria.com","Mon–Sat 9am–8pm"] },
+            { title:"Services", links:["The 10-Series","Structural Sessions","Postural Assessment","Movement Integration","Athletic Optimization"] },
+            { title:"Practice",  links:["Philosophy","About SI","FAQ","New Clients"] },
+            { title:"Visit",     links:["sintoriabodywork.com","St. Petersburg, FL","hello@sintoria.com","Mon–Sat 9am–6pm"] },
           ].map(col => (
             <nav key={col.title} aria-label={col.title}>
               <div className="text-[0.58rem] tracking-[0.24em] uppercase text-[#C8967A] mb-5">{col.title}</div>

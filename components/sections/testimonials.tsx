@@ -3,9 +3,9 @@ import { motion } from "framer-motion";
 import { useInView } from "@/hooks/use-in-view";
 
 const reviews = [
-  { q:"I walked in carrying the invisible weight of months of chronic tension. I left feeling like something had been gently handed back to me. The work here goes beyond technique — it is pure intuition.", a:"Sarah M.", role:"Regular client since 2021", large:true },
-  { q:"Two years of chronic back pain gone after three sessions. I have no other word for it — healing.", a:"James R.", role:"Monthly member" },
-  { q:"The couples session for our anniversary was the most restorative evening of our marriage. Already rebooked.", a:"Lisa & Tom K.", role:"Anniversary guests" },
+  { q:"I came in with fifteen years of lower back pain and a body that felt like it was fighting itself. By session seven, I was standing taller than I had in a decade. This isn't massage — it's reorganization.", a:"David K.", role:"10-series graduate", large:true },
+  { q:"As a runner, I'd accepted that hip tightness was just part of the deal. Three sessions in, my stride opened up in a way no stretch ever achieved.", a:"Rachel T.", role:"Marathon runner" },
+  { q:"After my shoulder surgery, nothing was getting my range back. The scar tissue work here gave me movement I was told I'd lost permanently.", a:"Mark S.", role:"Post-surgical recovery" },
 ];
 
 export default function Testimonials() {
@@ -21,12 +21,12 @@ export default function Testimonials() {
             </div>
             <h2 className="font-display font-light text-[#2C1F14] leading-[1.1]"
                 style={{ fontSize:"clamp(2.2rem,4vw,3.8rem)" }}>
-              What Our Clients <em className="italic text-[#A0522D]">Feel</em>
+              What Changes <em className="italic text-[#A0522D]">Look Like</em>
             </h2>
           </motion.div>
           <div className="hidden md:block text-right">
             <div className="text-[#A0522D] text-base tracking-wider">★★★★★</div>
-            <div className="text-[0.62rem] tracking-[0.14em] uppercase text-[#A89880] mt-1">4.98 · 500 sessions</div>
+            <div className="text-[0.62rem] tracking-[0.14em] uppercase text-[#A89880] mt-1">4.98 · 500+ clients</div>
           </div>
         </div>
 

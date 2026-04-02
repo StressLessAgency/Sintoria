@@ -1,5 +1,5 @@
 "use client";
-const items = ["Swedish Relaxation","Hot Stone Ritual","Deep Tissue Therapy","Aromatherapy","Couples Sanctuary","Prenatal Care","Sports Recovery"];
+const items = ["Structural Integration","10-Series Protocol","Fascial Release","Postural Assessment","Movement Education","Scar Tissue Work","Athletic Optimization"];
 
 export default function MarqueeBand() {
   const doubled = [...items, ...items];

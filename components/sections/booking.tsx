@@ -20,24 +20,24 @@ export default function Booking() {
         <motion.div initial={{ opacity:0, y:24 }} animate={inView ? { opacity:1, y:0 } : {}} transition={{ duration:0.8 }}>
           <div className="flex items-center gap-3 mb-6">
             <span className="w-6 h-px bg-[rgba(138,152,120,0.7)]" />
-            <span className="text-[0.6rem] tracking-[0.28em] uppercase text-[rgba(138,152,120,0.85)]">Reserve Your Session</span>
+            <span className="text-[0.6rem] tracking-[0.28em] uppercase text-[rgba(138,152,120,0.85)]">Schedule Your Assessment</span>
           </div>
 
           {/* 21st.dev-style animated badge */}
           <div className="inline-flex items-center gap-2 bg-[rgba(200,150,122,0.15)] border border-[rgba(200,150,122,0.25)] px-4 py-1.5 mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-[#C8967A] animate-pulse" />
-            <span className="text-[0.62rem] tracking-[0.16em] uppercase text-[#C8967A]">20% off · New clients</span>
+            <span className="text-[0.62rem] tracking-[0.16em] uppercase text-[#C8967A]">Complimentary assessment · New clients</span>
           </div>
 
           <h2 className="font-display font-light text-[#F5F0E8] leading-[1.1] mb-6"
               style={{ fontSize:"clamp(2.5rem,4vw,4rem)" }}>
-            Begin Your <em className="italic text-[rgba(237,229,212,0.7)]">Journey</em>
+            Let's Assess Your <em className="italic text-[rgba(237,229,212,0.7)]">Structure</em>
           </h2>
           <p className="text-[0.85rem] leading-[2] text-[rgba(237,229,212,0.45)] font-light mb-8 max-w-[360px]">
-            New clients receive 20% off automatically — no code needed. Takes less than two minutes.
+            Every body tells a different story. Your first session begins with a structural assessment — so we build a plan around what your body actually needs.
           </p>
           <ul className="flex flex-col gap-3">
-            {["Complimentary consultation every session","Certified, licensed therapists","100% organic, cruelty-free products","Private, soundproofed rooms","Free cancellation up to 24h prior"].map(perk => (
+            {["Complimentary postural assessment","Certified structural integration practitioner","Customized session-by-session progression","Private, dedicated treatment room","Free cancellation up to 24h prior"].map(perk => (
               <li key={perk} className="flex items-start gap-3 text-[0.8rem] text-[rgba(237,229,212,0.55)] font-light">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#8A9878] flex-shrink-0 mt-1.5" />
                 {perk}
@@ -80,20 +80,20 @@ export default function Booking() {
               <select required defaultValue=""
                       className="w-full bg-transparent border-none outline-none px-3 pt-6 pb-2 text-[0.88rem] text-[#2C1F14] font-light cursor-pointer appearance-none">
                 <option value="" disabled />
-                {["Hot Stone Ritual — $135","Swedish Relaxation — $95","Deep Tissue Therapy — $110","Aromatherapy Bliss — $105","Prenatal Care — $100","Couples Sanctuary — $220"].map(s => (
+                {["The 10-Series — $1,650","Structural Single Session — $185","Postural Assessment — $95","Movement Integration — $145","Post-Surgical Recovery — $165","Athletic Optimization — $185"].map(s => (
                   <option key={s}>{s}</option>
                 ))}
               </select>
               <label className="absolute left-3 top-4 text-[0.65rem] tracking-[0.12em] uppercase text-[#A89880] pointer-events-none">
-                Select Treatment
+                Select Service
               </label>
             </div>
 
             <Button variant="primary" type="submit" className="mt-6 w-full">
-              Confirm Reservation
+              Book Your Session
             </Button>
             <p className="text-[0.65rem] text-[#A89880] text-center mt-3 leading-relaxed">
-              sintoriabodywork.com · St. Petersburg, FL<br/>Mon–Sat 9am–8pm · 20% off applied automatically
+              sintoriabodywork.com · St. Petersburg, FL<br/>Mon–Sat 9am–6pm · By appointment only
             </p>
           </form>
         )}
