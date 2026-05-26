@@ -1,0 +1,10 @@
+server/
+design/
+docker-compose.yml
+CLAUDE.md
+.env.example
+.git/
+node_modules/
+client/node_modules/
+client/dist/
+*.log
