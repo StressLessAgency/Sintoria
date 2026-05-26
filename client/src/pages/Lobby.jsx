@@ -19,7 +19,7 @@ export default function Lobby() {
   const logout = useAuthStore(s => s.logout);
   const { balance } = useWallet();
   const [showCreate, setShowCreate] = useState(false);
-  const [filters, setFilters] = useState({ minWager: null, maxWager: null, mode: null });
+  const [filters, setFilters] = useState({ minWager: null, maxWager: null });
 
   const roomsQuery = useQuery({
     queryKey: ['rooms', filters],
@@ -27,7 +27,6 @@ export default function Lobby() {
       const params = {};
       if (filters.minWager) params.minWager = filters.minWager;
       if (filters.maxWager) params.maxWager = filters.maxWager;
-      if (filters.mode) params.mode = filters.mode;
       const { data } = await api.get('/rooms', { params });
       return data;
     },

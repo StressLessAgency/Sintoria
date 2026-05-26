@@ -122,10 +122,7 @@ export default function Profile() {
                 {historyQuery.data.games.map((game, i) => (
                   <div key={i} className="card flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
-                      <Badge variant={game.mode === 'ELIMINATION' ? 'gold' : 'default'} className="text-[10px]">
-                        {game.mode === 'ELIMINATION' ? 'ELIM' : 'SINGLE'}
-                      </Badge>
-                      <span className="font-mono text-sm">{formatMoney(game.wagerCents)}/round</span>
+                      <span className="font-mono text-sm">{formatMoney(game.wagerCents)} ante</span>
                       <span className="text-xs text-txt-faint">{game.rounds} round{game.rounds !== 1 ? 's' : ''}</span>
                     </div>
                     <div className="text-right">

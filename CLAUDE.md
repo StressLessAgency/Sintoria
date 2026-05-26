@@ -1,7 +1,7 @@
 # THREES — Claude Code Context
 
 ## What This Is
-Full-stack real-money multiplayer dice game. Six dice, threes worth zero, lowest score loses their wager. Server-authoritative, real-time via Socket.io, Stripe for money movement.
+Full-stack real-money multiplayer dice game (a.k.a. Tripps). Five dice, turn-based, threes count as zero, **lowest total wins the pot**. Server-authoritative, real-time via Socket.io, Stripe for money movement. 2% house rake.
 
 ## Owner
 Quinn Blalock (product/creative) + Bryan (engineering/ops, owns Supabase + deployments). Stressless Studio.
@@ -101,29 +101,32 @@ borderHi: rgba(212,151,46,0.18)
 - No white/light backgrounds anywhere
 - No generic AI aesthetic (purple gradients, rounded everything)
 
-## Game Rules
-1. Everyone rolls 6 dice simultaneously (server-generated, crypto.randomBytes)
-2. Sum your dice — but 3s are worth 0
-3. All 3s = instant elimination (score 0)
-4. Lowest score loses their wager
-5. Winners split losers' pot minus 5% house rake
-6. Elimination mode: losers knocked out each round until one remains
+## Game Rules (real Tripps)
+1. Each player **antes one unit** into the pot
+2. Players take turns rolling five dice (server-generated, crypto.randomBytes)
+3. Up to **5 rolls per hand**; **must set ≥1 die aside** after every roll
+4. Set-aside dice are locked — can't be rolled again
+5. 3s count as zero; other dice add their face value
+6. **Lowest total wins the entire pot**
+7. **5×6 on one roll = "Shooting the Moon" → instant win**
+8. Tied players ante one more unit and replay; non-tied players are out
+9. Winner of a hand rolls first in the next hand
 
 ## Payout Math
 ```
-totalPot = wagerCents × playerCount
-loserContribution = wagerCents × loserCount
-rake = floor(loserContribution × 0.05)
-profitPerWinner = floor((loserContribution - rake) / winnerCount)
-returnPerWinner = wagerCents + profitPerWinner
+pot          = sum of antes (initial + any tie-replay re-antes)
+rake         = floor(pot × HOUSE_RAKE_PERCENT / 100)   // default 2%
+winnerCents  = pot - rake
 ```
 
 ## Key Architecture Decisions
-- **Ledger uses SELECT FOR UPDATE** — prevents double-spend race condition the spec originally had
-- **Pot = wager × playerCount** — corrected from spec which had wager × loserCount
-- **Redis for live state, Postgres for history** — room state in Redis with TTL, completed games persisted to Postgres
+- **Ledger uses SELECT FOR UPDATE** — prevents double-spend race conditions
+- **Turn-based with mandatory set-aside** — server gates rolls behind a `currentRoll → set_aside` cycle
+- **Pot = sum of antes** — initial ante × playerCount, plus extra antes on tie replays
+- **Redis for live state, Postgres for history** — Redis hash per room with per-player `playerState`
 - **Idempotent deposits** — keyed on Stripe PaymentIntent ID, safe to replay webhooks
 - **Server-authoritative dice** — client never generates rolls, period
+- **Shooting the Moon** — only valid on a 5-dice roll (first roll of a hand); all 6s wins immediately
 
 ## File Structure
 ```

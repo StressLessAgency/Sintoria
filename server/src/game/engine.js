@@ -1,116 +1,90 @@
 import crypto from 'crypto';
 
-const HOUSE_RAKE_PERCENT = parseInt(process.env.HOUSE_RAKE_PERCENT || '5', 10);
+export const HAND_SIZE = 5;
+export const MAX_ROLLS = 5;
+export const HOUSE_RAKE_PERCENT = parseFloat(process.env.HOUSE_RAKE_PERCENT || '2');
 
 /**
- * Roll N dice using cryptographically secure randomness.
- * Server-authoritative — client never generates rolls.
+ * Unbiased roll of N dice using cryptographically secure randomness.
+ * Rejects bytes >= 252 (4 * 63) to avoid modulo bias.
  */
-export function rollDice(count = 6) {
-  return Array.from({ length: count }, () => {
-    const bytes = crypto.randomBytes(1);
-    return (bytes[0] % 6) + 1;
-  });
-}
-
-/**
- * Score a roll: 3s are worth 0, sum the rest.
- */
-export function scoreRoll(dice) {
-  return dice.reduce((sum, d) => sum + (d === 3 ? 0 : d), 0);
-}
-
-/**
- * Check if all dice are 3s — instant elimination.
- */
-export function isAllThrees(dice) {
-  return dice.every(d => d === 3);
-}
-
-/**
- * Apply reroll: keep 3s locked, reroll everything else.
- * Returns new full dice array with locked 3s preserved.
- */
-export function rerollDice(originalDice) {
-  return originalDice.map(d => {
-    if (d === 3) return 3; // locked
-    const bytes = crypto.randomBytes(1);
-    return (bytes[0] % 6) + 1;
-  });
-}
-
-/**
- * Resolve a round given all rolls.
- * Returns scores, eliminated players, and losers (lowest scorers).
- */
-export function resolveRound(rolls) {
-  const scores = {};
-  const eliminated = [];
-
-  for (const [userId, dice] of Object.entries(rolls)) {
-    if (isAllThrees(dice)) {
-      eliminated.push(userId);
-      scores[userId] = 0;
-    } else {
-      scores[userId] = scoreRoll(dice);
-    }
+export function rollDice(count) {
+  const max = 252;
+  const dice = [];
+  while (dice.length < count) {
+    const byte = crypto.randomBytes(1)[0];
+    if (byte < max) dice.push((byte % 6) + 1);
   }
+  return dice;
+}
 
-  // Among non-eliminated players, find lowest score
-  const activePlayers = Object.entries(scores)
-    .filter(([uid]) => !eliminated.includes(uid));
+/** Score set-aside dice. 3s count as 0; others sum normally. Lower is better. */
+export function scoreSetAside(setAside) {
+  return setAside.reduce((sum, d) => sum + (d === 3 ? 0 : d), 0);
+}
 
-  if (activePlayers.length === 0) {
-    // Everyone eliminated — edge case
-    return { scores, losers: eliminated, eliminated };
-  }
+/** All 5 dice showing 6 on a single roll = "Shooting the Moon" insta-win. */
+export function isShootingTheMoon(roll) {
+  return roll.length === HAND_SIZE && roll.every((d) => d === 6);
+}
 
-  const minScore = Math.min(...activePlayers.map(([, s]) => s));
-  const lowestScorers = activePlayers
-    .filter(([, s]) => s === minScore)
-    .map(([uid]) => uid);
+/** A player is finished when all 5 dice are set aside. */
+export function isPlayerDone(player) {
+  return player.setAside.length >= HAND_SIZE;
+}
 
-  // All losers: eliminated + lowest scorers
-  const losers = [...new Set([...eliminated, ...lowestScorers])];
-
-  return { scores, losers, eliminated };
+/** Number of dice the player will roll on their next turn. */
+export function diceRemaining(player) {
+  return HAND_SIZE - player.setAside.length;
 }
 
 /**
- * Calculate pot distribution.
- * Pot = wager * number of losers.
- * Rake = house percentage of pot.
- * Remainder split among winners.
+ * Pot distribution: winner takes the pot minus configurable house rake.
  */
-export function calculatePayout(wagerCents, playerCount, loserCount) {
-  const totalPot = wagerCents * playerCount;
-  const loserContribution = wagerCents * loserCount;
-  const rake = Math.floor(loserContribution * (HOUSE_RAKE_PERCENT / 100));
-  const distributable = loserContribution - rake;
-  const winnersCount = playerCount - loserCount;
-  const payoutPerWinner = winnersCount > 0
-    ? Math.floor(distributable / winnersCount)
-    : 0;
-
-  // Each winner gets their original wager back + share of losers' pot minus rake
+export function calculatePayout(potCents) {
+  const rake = Math.floor(potCents * (HOUSE_RAKE_PERCENT / 100));
   return {
-    totalPot,
-    loserContribution,
-    rake,
-    distributable,
-    winnersCount,
-    payoutPerWinner, // this is the PROFIT per winner (on top of getting wager back)
-    returnPerWinner: wagerCents + payoutPerWinner, // total returned to each winner
+    potCents,
+    rakeCents: rake,
+    winnerCents: potCents - rake,
   };
 }
 
 /**
- * Validate wager amount against configured limits.
+ * Find the lowest score among finished players. Returns the IDs tied at
+ * that score. If exactly one, that player wins outright; otherwise the
+ * tied players re-ante and replay.
  */
+export function resolveScores(playerScores) {
+  if (playerScores.length === 0) return { winners: [], minScore: null };
+  const minScore = Math.min(...playerScores.map((p) => p.score));
+  const winners = playerScores.filter((p) => p.score === minScore).map((p) => p.userId);
+  return { winners, minScore };
+}
+
 export function validateWager(amountCents) {
   const min = parseInt(process.env.MIN_WAGER_CENTS || '25', 10);
   const max = parseInt(process.env.MAX_WAGER_CENTS || '50000', 10);
   if (amountCents < min) return { valid: false, error: `Minimum wager is $${(min / 100).toFixed(2)}` };
   if (amountCents > max) return { valid: false, error: `Maximum wager is $${(max / 100).toFixed(2)}` };
+  return { valid: true };
+}
+
+/** Must set aside at least one die; indices must be unique and in range of the current roll. */
+export function validateSetAside(roll, indices) {
+  if (!Array.isArray(indices) || indices.length < 1) {
+    return { valid: false, error: 'Must set aside at least one die' };
+  }
+  if (indices.length > roll.length) {
+    return { valid: false, error: 'Cannot set aside more dice than rolled' };
+  }
+  const seen = new Set();
+  for (const i of indices) {
+    if (!Number.isInteger(i) || i < 0 || i >= roll.length) {
+      return { valid: false, error: 'Invalid die index' };
+    }
+    if (seen.has(i)) return { valid: false, error: 'Duplicate die index' };
+    seen.add(i);
+  }
   return { valid: true };
 }

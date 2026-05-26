@@ -111,9 +111,9 @@ export default function Landing() {
           <h2 className="font-display text-3xl text-gold mb-10 text-center">The Rules</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { step: '01', title: 'Roll', desc: 'Everyone rolls six dice simultaneously. Server generates all rolls. No cheating.' },
-              { step: '02', title: 'Score', desc: 'Sum your dice, but 3s are worth zero. All 3s = instant elimination. Low score loses.' },
-              { step: '03', title: 'Collect', desc: 'Winners split the pot minus a 5% house rake. In elimination mode, losers are knocked out round by round.' },
+              { step: '01', title: 'Ante', desc: 'Each player puts one unit in the pot. Five dice, taken in turn.' },
+              { step: '02', title: 'Set Aside', desc: 'Up to five rolls. After each, set at least one die aside. 3s count as zero — lowest total wins.' },
+              { step: '03', title: 'Take the Pot', desc: 'Winner takes the pot, minus a 2% house take. Five 6s on one roll wins on the spot.' },
             ].map((rule, i) => (
               <motion.div
                 key={rule.step}

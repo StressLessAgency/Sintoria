@@ -11,11 +11,10 @@ const router = Router();
 // Get all rooms (for lobby)
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { status, mode, minWager, maxWager } = req.query;
+    const { status, minWager, maxWager } = req.query;
 
     const where = {};
     if (status) where.status = status;
-    if (mode) where.mode = mode;
     if (minWager || maxWager) {
       where.wagerCents = {};
       if (minWager) where.wagerCents.gte = parseInt(minWager);
@@ -49,8 +48,6 @@ router.get('/', authMiddleware, async (req, res) => {
         name: room.name,
         wagerCents: room.wagerCents,
         maxPlayers: room.maxPlayers,
-        mode: room.mode,
-        rerollEnabled: room.rerollEnabled,
         status: redisState?.status || room.status,
         playerCount: redisState?.players?.length || room.participants.length,
         players: redisState?.players || room.participants.map(p => ({
@@ -71,7 +68,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create room
 router.post('/', authMiddleware, exclusionMiddleware, async (req, res) => {
   try {
-    const { wagerCents, maxPlayers = 6, mode = 'SINGLE_ROUND', rerollEnabled = false, name } = req.body;
+    const { wagerCents, maxPlayers = 6, name } = req.body;
 
     // Validate wager
     const wagerCheck = validateWager(wagerCents);
@@ -94,25 +91,16 @@ router.post('/', authMiddleware, exclusionMiddleware, async (req, res) => {
       select: { username: true },
     });
 
-    // Create in DB
     const room = await prisma.room.create({
       data: {
         hostId: req.userId,
         name: name || `${user.username}'s Table`,
         wagerCents,
         maxPlayers,
-        mode,
-        rerollEnabled,
       },
     });
 
-    // Create Redis state
-    await createRoomState(room.id, req.userId, {
-      wagerCents,
-      maxPlayers,
-      mode,
-      rerollEnabled,
-    });
+    await createRoomState(room.id, req.userId, { wagerCents, maxPlayers });
 
     res.status(201).json(room);
   } catch (err) {

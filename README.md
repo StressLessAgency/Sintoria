@@ -1,19 +1,22 @@
 # THREES
 
-Real-money multiplayer dice game. Roll six dice, dodge the threes, keep your money.
+Real-money multiplayer dice game. Also known as **Tripps** — a street game traditionally played in alleyways and living rooms with five dice and a pot of cash.
 
 ## Rules
 
-- Everyone rolls 6 dice simultaneously
-- **3s are worth zero** - they're locked and can't help your score
-- **All 3s = instant elimination** (0 score, auto-lose)
-- Lowest score loses their wager
-- Winners split the losers' pot minus a 5% house rake
-- Elimination mode: losers are knocked out round by round until one remains
+- Each player **antes one unit** (typically a dollar) into the pot
+- Players take turns rolling five dice
+- Each player has **up to 5 rolls**, but must set **at least 1 die aside** after every throw
+- Once a die is set aside, it can't be rolled again
+- **3s count as zero**; all other dice add their face value
+- **Lowest total wins the pot**
+- Five 6s on a single roll — "**Shooting the Moon**" — wins instantly
+- Tied players ante one more unit and play again
+- The house takes a 2% rake from the winner's payout
 
 ## Tech Stack
 
-- **Frontend:** React 18, Vite, Tailwind CSS, Framer Motion, Zustand, React Query
+- **Frontend:** React 18, Vite, Tailwind CSS, Framer Motion, Zustand, React Query, Socket.io-client
 - **Backend:** Node.js, Express, Socket.io, Prisma ORM
 - **Database:** PostgreSQL 15, Redis 7
 - **Payments:** Stripe (PaymentIntents + webhooks)
@@ -25,7 +28,6 @@ Real-money multiplayer dice game. Roll six dice, dodge the threes, keep your mon
 
 ```bash
 cp .env.example .env
-# Edit .env with your Stripe keys if testing payments
 docker compose up --build
 ```
 
@@ -65,7 +67,15 @@ npm run dev
 
 ### Server-Authoritative
 
-All dice rolls use `crypto.randomBytes` on the server. Clients never generate their own rolls. Game state is stored in Redis for real-time operations and persisted to Postgres for history/audit.
+All dice rolls use `crypto.randomBytes` on the server. Clients never generate their own rolls. Per-player game state (set-aside dice, current roll, rolls used, score) is stored in Redis for real-time operations and persisted to Postgres on game completion.
+
+### Turn-Based Flow
+
+1. All players ready up → server debits everyone's ante, builds turn order (winner of last game rolls first), and broadcasts `game_started`
+2. Current player emits `roll_dice` → server rolls `(5 - setAside.length)` dice, broadcasts `dice_rolled`
+3. Player picks which indices to keep, emits `set_aside { indices }` → server moves those to `setAside`, broadcasts `dice_set_aside`
+4. If the player still has dice and rolls left, repeat from step 2; else mark done and advance the turn
+5. When everyone is done, server runs `resolveScores` → either one winner (game over, pot paid out) or multiple winners (tie replay: tied players re-ante, only they play again)
 
 ### Double-Entry Ledger
 
@@ -74,11 +84,9 @@ All money operations use Prisma interactive transactions with `SELECT FOR UPDATE
 ### Payout Math
 
 ```
-totalPot = wagerCents * playerCount
-loserContribution = wagerCents * loserCount
-rake = floor(loserContribution * rakePercent / 100)
-profitPerWinner = floor((loserContribution - rake) / winnerCount)
-returnPerWinner = wagerCents + profitPerWinner
+pot          = sum of all antes (plus any tie-replay re-antes)
+rake         = floor(pot * HOUSE_RAKE_PERCENT / 100)   # default 2%
+winnerCents  = pot - rake
 ```
 
 ## Pages
@@ -89,7 +97,7 @@ returnPerWinner = wagerCents + profitPerWinner
 | `/login` | Authentication |
 | `/register` | Account creation (18+ enforced) |
 | `/lobby` | Browse and create tables |
-| `/room/:id` | **The game** - circular table, dice, chat |
+| `/room/:id` | **The game** — turn-based dice play, chat |
 | `/wallet` | Deposit, withdraw, transaction history |
 | `/profile` | Stats, game history, responsible gambling |
 | `/admin` | Dashboard, users, KYC, financials |
@@ -105,11 +113,3 @@ returnPerWinner = wagerCents + profitPerWinner
 ## Compliance Warning
 
 **This application requires jurisdiction-specific gambling licensing before any real-money deployment.** Stripe may not permit gambling transactions without proper merchant category setup. Consult a gaming attorney and obtain all required licenses before going live.
-
-## Design System
-
-- **Background:** Void #0A0907, Surface #111009, Felt #0C1C10
-- **Accent:** Gold #C8862A, Bright Gold #F5C842
-- **Status:** Win #2A7A4A, Loss #C63535
-- **Fonts:** Cinzel Decorative (display), DM Mono (scores/money), Lora (body)
-- **Aesthetic:** Premium underground casino - dark, textured, cinematic

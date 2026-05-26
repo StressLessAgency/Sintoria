@@ -1,375 +1,413 @@
-import { rollDice, rerollDice, scoreRoll, resolveRound, calculatePayout, isAllThrees } from '../game/engine.js';
-import { getRoomState, updateRoomState, deleteRoomState } from '../game/roomManager.js';
-import { creditPayout, refundWager, getBalance, recordRake } from '../services/ledger.js';
+import {
+  rollDice,
+  scoreSetAside,
+  isShootingTheMoon,
+  isPlayerDone,
+  diceRemaining,
+  calculatePayout,
+  resolveScores,
+  validateSetAside,
+  HAND_SIZE,
+  MAX_ROLLS,
+} from '../game/engine.js';
+import {
+  getRoomState,
+  updateRoomState,
+  deleteRoomState,
+  initialPlayerState,
+  buildTurnOrder,
+  allPlayersDone,
+} from '../game/roomManager.js';
+import { creditPayout, debitWager, recordRake, getBalance } from '../services/ledger.js';
 import { checkSocketRateLimit } from '../middleware/rateLimit.js';
 import { prisma } from '../app.js';
 
 export function setupGameHandlers(io, socket) {
-  // Roll dice
   socket.on('roll_dice', async ({ roomId }) => {
     try {
-      // Rate limit
-      const allowed = await checkSocketRateLimit(socket.userId, 'roll', 1, 2);
+      const allowed = await checkSocketRateLimit(socket.userId, 'roll', 1, 1);
       if (!allowed) return socket.emit('error', { code: 'RATE_LIMITED', message: 'Too fast' });
 
       const state = await getRoomState(roomId);
-      if (!state) return socket.emit('error', { code: 'ROOM_NOT_FOUND', message: 'Room not found' });
+      if (!state) return socket.emit('error', { code: 'ROOM_NOT_FOUND' });
       if (state.status !== 'IN_PROGRESS') return;
 
-      // Check player is in room and active
-      const player = state.players.find(p => p.userId === socket.userId);
-      if (!player) return;
-      if (state.eliminatedPlayers.includes(socket.userId)) return;
-
-      // Check hasn't already rolled this round
-      if (state.rolls[socket.userId]) {
-        return socket.emit('error', { code: 'ALREADY_ROLLED', message: 'Already rolled this round' });
+      const currentId = state.turnOrder[state.turnIndex];
+      if (currentId !== socket.userId) {
+        return socket.emit('error', { code: 'NOT_YOUR_TURN' });
       }
 
-      // Generate roll server-side
-      const dice = rollDice(6);
-      const score = scoreRoll(dice);
-      const eliminated = isAllThrees(dice);
+      const ps = state.playerState[socket.userId];
+      if (!ps || ps.done) return socket.emit('error', { code: 'ALREADY_DONE' });
+      if (ps.currentRoll && ps.currentRoll.length > 0) {
+        return socket.emit('error', { code: 'MUST_SET_ASIDE_FIRST' });
+      }
+      if (ps.rollsUsed >= MAX_ROLLS) {
+        return socket.emit('error', { code: 'NO_ROLLS_LEFT' });
+      }
 
-      // Store roll
-      const rolls = { ...state.rolls, [socket.userId]: dice };
-      await updateRoomState(roomId, { rolls });
+      const toRoll = diceRemaining(ps);
+      if (toRoll <= 0) return socket.emit('error', { code: 'NO_DICE_LEFT' });
 
-      // Broadcast to all players in room
+      const dice = rollDice(toRoll);
+      ps.currentRoll = dice;
+      ps.rollsUsed += 1;
+
+      const moon = isShootingTheMoon(dice);
+      if (moon) {
+        ps.shotTheMoon = true;
+        ps.setAside = [...ps.setAside, ...dice];
+        ps.currentRoll = null;
+        ps.done = true;
+        ps.score = scoreSetAside(ps.setAside);
+      }
+
+      const playerState = { ...state.playerState, [socket.userId]: ps };
+      await updateRoomState(roomId, { playerState });
+
       io.to(`room:${roomId}`).emit('dice_rolled', {
         playerId: socket.userId,
         username: socket.username,
         dice,
-        score,
-        eliminated,
+        rollsUsed: ps.rollsUsed,
+        shotTheMoon: moon,
       });
 
-      // Check if all active players have rolled
-      const activePlayers = state.players.filter(
-        p => !state.eliminatedPlayers.includes(p.userId)
-      );
-      const allRolled = activePlayers.every(p => rolls[p.userId]);
-
-      if (allRolled) {
-        // If reroll is enabled, wait for rerolls
-        if (state.rerollEnabled && !state.rerollPhase) {
-          await updateRoomState(roomId, { rerollPhase: 'true' });
-          io.to(`room:${roomId}`).emit('reroll_phase', {
-            timeoutMs: (parseInt(process.env.AFK_TIMEOUT_SECONDS) || 30) * 1000,
-          });
-
-          // Auto-resolve after timeout
-          setTimeout(async () => {
-            const currentState = await getRoomState(roomId);
-            if (currentState && currentState.rerollPhase === 'true') {
-              await resolveAndBroadcast(io, roomId);
-            }
-          }, (parseInt(process.env.AFK_TIMEOUT_SECONDS) || 30) * 1000);
-        } else if (!state.rerollEnabled) {
-          // Resolve immediately
-          await resolveAndBroadcast(io, roomId);
-        }
+      if (moon) {
+        await endGame(io, roomId, socket.userId);
       }
     } catch (err) {
-      console.error('Roll dice error:', err);
+      console.error('roll_dice error:', err);
       socket.emit('error', { code: 'ROLL_FAILED', message: 'Roll failed' });
     }
   });
 
-  // Reroll dice (if enabled)
-  socket.on('reroll_dice', async ({ roomId }) => {
+  socket.on('set_aside', async ({ roomId, indices }) => {
     try {
       const state = await getRoomState(roomId);
-      if (!state || !state.rerollEnabled) return;
-      if (state.rerollPhase !== 'true') return;
+      if (!state) return socket.emit('error', { code: 'ROOM_NOT_FOUND' });
+      if (state.status !== 'IN_PROGRESS') return;
 
-      if (state.hasRerolled.includes(socket.userId)) {
-        return socket.emit('error', { code: 'ALREADY_REROLLED', message: 'Already used reroll' });
+      const currentId = state.turnOrder[state.turnIndex];
+      if (currentId !== socket.userId) {
+        return socket.emit('error', { code: 'NOT_YOUR_TURN' });
       }
 
-      const originalDice = state.rolls[socket.userId];
-      if (!originalDice) return;
+      const ps = state.playerState[socket.userId];
+      if (!ps || ps.done) return socket.emit('error', { code: 'ALREADY_DONE' });
+      if (!ps.currentRoll || ps.currentRoll.length === 0) {
+        return socket.emit('error', { code: 'NO_DICE_TO_SET_ASIDE' });
+      }
 
-      // Reroll non-3 dice
-      const newDice = rerollDice(originalDice);
-      const score = scoreRoll(newDice);
+      const check = validateSetAside(ps.currentRoll, indices);
+      if (!check.valid) {
+        return socket.emit('error', { code: 'INVALID_SET_ASIDE', message: check.error });
+      }
 
-      // Update state
-      const rerolls = { ...state.rerolls, [socket.userId]: newDice };
-      const hasRerolled = [...state.hasRerolled, socket.userId];
+      const kept = [];
+      const remaining = [];
+      for (let i = 0; i < ps.currentRoll.length; i++) {
+        if (indices.includes(i)) kept.push(ps.currentRoll[i]);
+        else remaining.push(ps.currentRoll[i]);
+      }
 
-      // Update rolls with new dice
-      const rolls = { ...state.rolls, [socket.userId]: newDice };
+      ps.setAside = [...ps.setAside, ...kept];
+      ps.currentRoll = null;
+      ps.score = scoreSetAside(ps.setAside);
 
-      await updateRoomState(roomId, { rolls, rerolls, hasRerolled });
+      const forcedDoneByRolls = ps.rollsUsed >= MAX_ROLLS && remaining.length === 0;
+      if (isPlayerDone(ps) || forcedDoneByRolls) {
+        ps.done = true;
+      }
 
-      io.to(`room:${roomId}`).emit('reroll_result', {
+      const playerState = { ...state.playerState, [socket.userId]: ps };
+
+      io.to(`room:${roomId}`).emit('dice_set_aside', {
         playerId: socket.userId,
         username: socket.username,
-        dice: newDice,
-        score,
-        originalDice,
+        setAside: ps.setAside,
+        score: ps.score,
+        done: ps.done,
       });
 
-      // Check if all active players have made their reroll decision
-      const activePlayers = state.players.filter(
-        p => !state.eliminatedPlayers.includes(p.userId)
-      );
-      const allDecided = activePlayers.every(
-        p => hasRerolled.includes(p.userId) || state.hasRerolled.includes(p.userId)
-      );
+      let turnIndex = state.turnIndex;
+      if (ps.done) {
+        turnIndex = nextActiveTurn(state.turnOrder, playerState, state.turnIndex);
+      }
+      await updateRoomState(roomId, { playerState, turnIndex });
 
-      // We don't force rerolls — just wait for timeout or explicit skip
-    } catch (err) {
-      console.error('Reroll error:', err);
-    }
-  });
-
-  // Skip reroll
-  socket.on('skip_reroll', async ({ roomId }) => {
-    try {
-      const state = await getRoomState(roomId);
-      if (!state || state.rerollPhase !== 'true') return;
-
-      const hasRerolled = [...state.hasRerolled, socket.userId];
-      await updateRoomState(roomId, { hasRerolled });
-
-      // Check if everyone has decided
-      const activePlayers = state.players.filter(
-        p => !state.eliminatedPlayers.includes(p.userId)
-      );
-      const allDecided = activePlayers.every(p => hasRerolled.includes(p.userId));
-
-      if (allDecided) {
-        await resolveAndBroadcast(io, roomId);
+      if (allPlayersDone(state.turnOrder, playerState)) {
+        await resolveGame(io, roomId);
+      } else if (ps.done) {
+        io.to(`room:${roomId}`).emit('turn_changed', {
+          currentPlayerId: state.turnOrder[turnIndex],
+        });
       }
     } catch (err) {
-      console.error('Skip reroll error:', err);
+      console.error('set_aside error:', err);
+      socket.emit('error', { code: 'SET_ASIDE_FAILED' });
     }
   });
 }
 
-async function resolveAndBroadcast(io, roomId) {
+function nextActiveTurn(turnOrder, playerState, startIdx) {
+  for (let step = 1; step <= turnOrder.length; step++) {
+    const idx = (startIdx + step) % turnOrder.length;
+    if (!playerState[turnOrder[idx]]?.done) return idx;
+  }
+  return startIdx;
+}
+
+/**
+ * Called by roomHandlers when all players are ready. Debits wagers,
+ * initializes player state, builds turn order, and broadcasts start.
+ */
+export async function startGame(io, roomId) {
   const state = await getRoomState(roomId);
   if (!state) return;
+  if (state.status !== 'WAITING') return;
 
-  // Prevent double resolution
-  if (state.resolving === 'true') return;
-  await updateRoomState(roomId, { resolving: 'true', rerollPhase: 'false' });
+  const playerIds = state.players.map((p) => p.userId);
+  const debited = [];
 
-  try {
-    // Build final rolls (only active players)
-    const activeRolls = {};
-    const activePlayers = state.players.filter(
-      p => !state.eliminatedPlayers.includes(p.userId)
-    );
-
-    for (const player of activePlayers) {
-      if (state.rolls[player.userId]) {
-        activeRolls[player.userId] = state.rolls[player.userId];
+  for (const id of playerIds) {
+    try {
+      await debitWager(id, state.wagerCents, roomId);
+      debited.push(id);
+    } catch (err) {
+      for (const refundId of debited) {
+        try {
+          await debitWager(refundId, -state.wagerCents, roomId);
+        } catch {
+          // best-effort refund
+        }
       }
-    }
-
-    if (Object.keys(activeRolls).length < 2) {
-      // Not enough players — end game
-      await endGame(io, roomId, state);
+      io.to(`room:${roomId}`).emit('game_start_failed', {
+        reason: 'INSUFFICIENT_FUNDS',
+        playerId: id,
+      });
       return;
     }
-
-    // Resolve round
-    const result = resolveRound(activeRolls);
-    const payout = calculatePayout(
-      state.wagerCents,
-      activePlayers.length,
-      result.losers.length
-    );
-
-    // Process payouts
-    const payouts = {};
-    const winners = activePlayers
-      .filter(p => !result.losers.includes(p.userId))
-      .map(p => p.userId);
-
-    for (const winnerId of winners) {
-      try {
-        await creditPayout(winnerId, payout.returnPerWinner, state.currentRoundId);
-        payouts[winnerId] = payout.returnPerWinner;
-
-        // Update participant stats
-        await prisma.gameParticipant.updateMany({
-          where: { roomId, userId: winnerId },
-          data: { totalWon: { increment: payout.payoutPerWinner } },
-        });
-      } catch (err) {
-        console.error(`Payout failed for ${winnerId}:`, err);
-      }
-    }
-
-    // Record rake
-    if (payout.rake > 0) {
-      await recordRake(payout.rake, state.currentRoundId);
-    }
-
-    // Update loser stats
-    for (const loserId of result.losers) {
-      await prisma.gameParticipant.updateMany({
-        where: { roomId, userId: loserId },
-        data: {
-          totalLost: { increment: state.wagerCents },
-          isActive: state.mode === 'ELIMINATION' ? false : undefined,
-        },
-      }).catch(() => {});
-    }
-
-    // Update round in DB
-    await prisma.gameRound.update({
-      where: { id: state.currentRoundId },
-      data: {
-        rolls: state.rolls,
-        rerolls: Object.keys(state.rerolls).length > 0 ? state.rerolls : undefined,
-        scores: result.scores,
-        losers: result.losers,
-        potCents: payout.totalPot,
-        rakeCents: payout.rake,
-        status: 'COMPLETED',
-        completedAt: new Date(),
-      },
-    });
-
-    // Broadcast round result
-    io.to(`room:${roomId}`).emit('round_result', {
-      scores: result.scores,
-      losers: result.losers,
-      winners,
-      potCents: payout.totalPot,
-      rakeCents: payout.rake,
-      payouts,
-      payoutPerWinner: payout.returnPerWinner,
-    });
-
-    // Send wallet updates
-    for (const player of state.players) {
-      const balance = await getBalance(player.userId);
-      io.to(`user:${player.userId}`).emit('wallet_updated', {
-        newBalanceCents: balance,
-      });
-    }
-
-    // Determine next action based on game mode
-    if (state.mode === 'ELIMINATION') {
-      // Update eliminated list
-      const newEliminated = [...new Set([...state.eliminatedPlayers, ...result.losers])];
-      await updateRoomState(roomId, { eliminatedPlayers: newEliminated });
-
-      // Notify eliminations
-      for (const loserId of result.losers) {
-        io.to(`room:${roomId}`).emit('player_eliminated', {
-          playerId: loserId,
-        });
-      }
-
-      // Check if game is over (1 or fewer active players)
-      const remainingPlayers = state.players.filter(
-        p => !newEliminated.includes(p.userId)
-      );
-
-      if (remainingPlayers.length <= 1) {
-        await endGame(io, roomId, { ...state, eliminatedPlayers: newEliminated });
-      } else {
-        // Start next round after delay
-        setTimeout(async () => {
-          await startNextRound(io, roomId);
-        }, 5000);
-      }
-    } else {
-      // Single round — game over
-      await endGame(io, roomId, state);
-    }
-  } catch (err) {
-    console.error('Resolve error:', err);
-    await updateRoomState(roomId, { resolving: 'false' });
   }
-}
 
-async function startNextRound(io, roomId) {
-  const state = await getRoomState(roomId);
-  if (!state) return;
-
-  const nextRoundNumber = state.currentRound + 1;
-
-  // Debit wagers from remaining players
-  const activePlayers = state.players.filter(
-    p => !state.eliminatedPlayers.includes(p.userId)
-  );
-
-  for (const player of activePlayers) {
-    try {
-      await (await import('../services/ledger.js')).debitWager(player.userId, state.wagerCents, roomId);
-    } catch (err) {
-      // Player can't cover — eliminate them
-      const newEliminated = [...state.eliminatedPlayers, player.userId];
-      await updateRoomState(roomId, { eliminatedPlayers: newEliminated });
-      io.to(`room:${roomId}`).emit('player_eliminated', { playerId: player.userId });
-    }
-  }
+  const firstId = state.lastWinnerId || state.hostId || playerIds[0];
+  const turnOrder = buildTurnOrder(playerIds, firstId);
+  const playerState = initialPlayerState(playerIds);
+  const potCents = state.wagerCents * playerIds.length;
 
   const round = await prisma.gameRound.create({
     data: {
       roomId,
-      roundNumber: nextRoundNumber,
+      roundNumber: state.currentRound + 1,
       status: 'ROLLING',
+      potCents,
     },
   });
 
   await updateRoomState(roomId, {
-    currentRound: nextRoundNumber,
+    status: 'IN_PROGRESS',
+    phase: 'PLAYING',
+    turnOrder,
+    turnIndex: 0,
+    playerState,
+    potCents,
+    currentRound: state.currentRound + 1,
     currentRoundId: round.id,
-    rolls: {},
-    rerolls: {},
-    hasRerolled: [],
-    resolving: 'false',
-    rerollPhase: 'false',
+    tieReplayPlayerIds: [],
   });
 
-  io.to(`room:${roomId}`).emit('round_started', {
-    roundId: round.id,
-    roundNumber: nextRoundNumber,
-    timeoutMs: (parseInt(process.env.AFK_TIMEOUT_SECONDS) || 30) * 1000,
+  await prisma.room.update({
+    where: { id: roomId },
+    data: { status: 'IN_PROGRESS' },
   });
 
-  // Send wallet updates
-  for (const player of activePlayers) {
+  io.to(`room:${roomId}`).emit('game_started', {
+    turnOrder,
+    currentPlayerId: turnOrder[0],
+    potCents,
+    handSize: HAND_SIZE,
+    maxRolls: MAX_ROLLS,
+  });
+
+  for (const player of state.players) {
     const balance = await getBalance(player.userId);
-    io.to(`user:${player.userId}`).emit('wallet_updated', {
-      newBalanceCents: balance,
-    });
+    io.to(`user:${player.userId}`).emit('wallet_updated', { newBalanceCents: balance });
   }
 }
 
-async function endGame(io, roomId, state) {
-  // Find winner (last active player in elimination, or non-losers in single round)
-  const activePlayers = state.players.filter(
-    p => !state.eliminatedPlayers.includes(p.userId)
-  );
+/**
+ * After all players are done, find the lowest score. One winner → pay out
+ * and end. Multiple winners → tied players re-ante and play another hand.
+ */
+async function resolveGame(io, roomId) {
+  const state = await getRoomState(roomId);
+  if (!state) return;
 
-  const winnerId = activePlayers[0]?.userId || null;
+  const activeIds = state.tieReplayPlayerIds.length > 0
+    ? state.tieReplayPlayerIds
+    : state.turnOrder;
 
-  // Update room status
+  const playerScores = activeIds.map((id) => ({
+    userId: id,
+    score: state.playerState[id]?.score ?? 0,
+  }));
+
+  const { winners, minScore } = resolveScores(playerScores);
+
+  io.to(`room:${roomId}`).emit('round_result', {
+    scores: Object.fromEntries(playerScores.map((p) => [p.userId, p.score])),
+    minScore,
+    winners,
+  });
+
+  if (winners.length === 1) {
+    await endGame(io, roomId, winners[0]);
+    return;
+  }
+
+  await startTieReplay(io, roomId, winners);
+}
+
+/**
+ * Tied players each ante one more wager unit. The pot grows. Only tied
+ * players play the next hand; non-tied players are out.
+ */
+async function startTieReplay(io, roomId, tiedIds) {
+  const state = await getRoomState(roomId);
+  if (!state) return;
+
+  let extraPot = 0;
+  const stillIn = [];
+  for (const id of tiedIds) {
+    try {
+      await debitWager(id, state.wagerCents, roomId);
+      extraPot += state.wagerCents;
+      stillIn.push(id);
+    } catch (err) {
+      io.to(`room:${roomId}`).emit('tie_replay_drop', { playerId: id, reason: 'INSUFFICIENT_FUNDS' });
+    }
+  }
+
+  if (stillIn.length <= 1) {
+    if (stillIn.length === 1) {
+      await updateRoomState(roomId, { potCents: state.potCents + extraPot });
+      await endGame(io, roomId, stillIn[0]);
+    } else {
+      await endGame(io, roomId, null);
+    }
+    return;
+  }
+
+  const playerState = { ...state.playerState };
+  for (const id of stillIn) {
+    playerState[id] = {
+      setAside: [],
+      currentRoll: null,
+      rollsUsed: 0,
+      score: 0,
+      done: false,
+      shotTheMoon: false,
+    };
+  }
+  for (const id of state.turnOrder) {
+    if (!stillIn.includes(id)) {
+      playerState[id] = { ...playerState[id], done: true };
+    }
+  }
+
+  const turnOrder = buildTurnOrder(stillIn, stillIn[0]);
+
+  await updateRoomState(roomId, {
+    playerState,
+    turnOrder,
+    turnIndex: 0,
+    potCents: state.potCents + extraPot,
+    tieReplayPlayerIds: stillIn,
+  });
+
+  io.to(`room:${roomId}`).emit('tie_replay', {
+    tiedPlayerIds: stillIn,
+    newPotCents: state.potCents + extraPot,
+    currentPlayerId: turnOrder[0],
+  });
+
+  for (const id of stillIn) {
+    const balance = await getBalance(id);
+    io.to(`user:${id}`).emit('wallet_updated', { newBalanceCents: balance });
+  }
+}
+
+async function endGame(io, roomId, winnerId) {
+  const state = await getRoomState(roomId);
+  if (!state) return;
+
+  const payout = calculatePayout(state.potCents);
+
+  if (winnerId) {
+    try {
+      await creditPayout(winnerId, payout.winnerCents, state.currentRoundId);
+      await prisma.gameParticipant.updateMany({
+        where: { roomId, userId: winnerId },
+        data: { totalWon: { increment: payout.winnerCents - state.wagerCents } },
+      });
+    } catch (err) {
+      console.error('Payout failed:', err);
+    }
+  }
+
+  if (payout.rakeCents > 0 && winnerId) {
+    await recordRake(payout.rakeCents, state.currentRoundId);
+  }
+
+  for (const player of state.players) {
+    if (player.userId !== winnerId) {
+      await prisma.gameParticipant.updateMany({
+        where: { roomId, userId: player.userId },
+        data: { totalLost: { increment: state.wagerCents } },
+      }).catch(() => {});
+    }
+  }
+
+  if (state.currentRoundId) {
+    await prisma.gameRound.update({
+      where: { id: state.currentRoundId },
+      data: {
+        rolls: state.playerState,
+        scores: Object.fromEntries(
+          Object.entries(state.playerState).map(([id, ps]) => [id, ps.score])
+        ),
+        losers: state.turnOrder.filter((id) => id !== winnerId),
+        potCents: state.potCents,
+        rakeCents: payout.rakeCents,
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+    }).catch(() => {});
+  }
+
   await prisma.room.update({
     where: { id: roomId },
     data: { status: 'COMPLETED' },
-  });
+  }).catch(() => {});
 
-  await updateRoomState(roomId, { status: 'COMPLETED' });
+  await updateRoomState(roomId, {
+    status: 'COMPLETED',
+    phase: 'GAME_OVER',
+    lastWinnerId: winnerId || '',
+  });
 
   io.to(`room:${roomId}`).emit('game_over', {
     winnerId,
-    winnerUsername: activePlayers[0]?.username,
-    finalPot: state.wagerCents * state.players.length,
+    winnerUsername: state.players.find((p) => p.userId === winnerId)?.username,
+    potCents: state.potCents,
+    rakeCents: payout.rakeCents,
+    payoutCents: payout.winnerCents,
   });
 
-  // Clean up Redis state after a delay
-  setTimeout(async () => {
-    await deleteRoomState(roomId);
-  }, 60000); // Keep state for 1 min for reconnects
+  for (const player of state.players) {
+    const balance = await getBalance(player.userId);
+    io.to(`user:${player.userId}`).emit('wallet_updated', { newBalanceCents: balance });
+  }
+
+  setTimeout(() => deleteRoomState(roomId), 60000);
 }

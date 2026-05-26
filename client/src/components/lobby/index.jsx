@@ -31,12 +31,6 @@ export function RoomCard({ room, index }) {
             <Badge variant={tier.class.replace('badge-', '')} className="text-[10px]">
               {tier.label}
             </Badge>
-            {room.mode === 'ELIMINATION' && (
-              <Badge variant="gold" className="text-[10px]">ELIM</Badge>
-            )}
-            {room.rerollEnabled && (
-              <Badge className="text-[10px]">REROLL</Badge>
-            )}
           </div>
         </div>
         <span className="font-mono text-lg font-bold text-gold-bright">
@@ -93,17 +87,6 @@ export function RoomFilters({ filters, onChange }) {
           {preset.label}
         </button>
       ))}
-      <button
-        onClick={() => onChange({ ...filters, mode: filters.mode === 'ELIMINATION' ? null : 'ELIMINATION' })}
-        className={cn(
-          'px-3 py-1.5 text-xs font-mono border transition-all',
-          filters.mode === 'ELIMINATION'
-            ? 'border-gold bg-gold/10 text-gold'
-            : 'border-gold/10 text-txt-muted hover:border-gold/30'
-        )}
-      >
-        Elimination Only
-      </button>
     </div>
   );
 }
@@ -113,8 +96,6 @@ export function CreateRoomModal({ isOpen, onClose, onCreate, isLoading }) {
     name: '',
     wagerCents: 100,
     maxPlayers: 4,
-    mode: 'SINGLE_ROUND',
-    rerollEnabled: false,
   });
 
   const wagerOptions = [25, 50, 100, 250, 500, 1000, 2500, 5000];
@@ -174,29 +155,8 @@ export function CreateRoomModal({ isOpen, onClose, onCreate, isLoading }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.mode === 'ELIMINATION'}
-              onChange={e => setForm({ ...form, mode: e.target.checked ? 'ELIMINATION' : 'SINGLE_ROUND' })}
-              className="accent-gold"
-            />
-            <span className="text-sm text-txt-primary">Elimination mode</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.rerollEnabled}
-              onChange={e => setForm({ ...form, rerollEnabled: e.target.checked })}
-              className="accent-gold"
-            />
-            <span className="text-sm text-txt-primary">Allow reroll</span>
-          </label>
-        </div>
-
         <Button variant="primary" className="w-full" onClick={handleSubmit} loading={isLoading}>
-          Create Table &middot; {formatMoney(form.wagerCents)} wager
+          Create Table &middot; {formatMoney(form.wagerCents)} ante
         </Button>
       </div>
     </Modal>
