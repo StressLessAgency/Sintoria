@@ -249,6 +249,51 @@ body {
   to { transform: translateY(-8px); }
 }
 
+@keyframes cone-warmup {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  60% { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+.cone-warmup { animation: cone-warmup 1800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@keyframes gold-sweep {
+  0% { transform: translateX(-110%) skewX(-20deg); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(220%) skewX(-20deg); opacity: 0; }
+}
+.gold-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 208, 106, 0.55) 50%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: gold-sweep 1600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  mix-blend-mode: screen;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee {
+  display: inline-flex;
+  animation: marquee 28s linear infinite;
+  white-space: nowrap;
+}
+
+/* Letter reveal helper: parent gets overflow hidden, child slides up */
+.letter-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  line-height: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
