@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String              @id @default(cuid())
+  email               String              @unique
+  username            String              @unique
+  passwordHash        String
+  dateOfBirth         DateTime
+  kycStatus           KycStatus           @default(PENDING)
+  isVerified          Boolean             @default(false)
+  isSuspended         Boolean             @default(false)
+  isAdmin             Boolean             @default(false)
+  avatarUrl           String?
+  verifyToken         String?
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  refreshToken        String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  wallet              Wallet?
+  transactions        Transaction[]
+  gameParticipations  GameParticipant[]
+  responsibleGambling ResponsibleGambling?
+
+  @@index([email])
+  @@index([username])
+}
+
+enum KycStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model Wallet {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  balanceCents Int      @default(0)
+  user         User     @relation(fields: [userId], references: [id])
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Transaction {
+  id           String          @id @default(cuid())
+  userId       String
+  type         TransactionType
+  amountCents  Int
+  balanceCents Int
+  reference    String?
+  metadata     Json?
+  createdAt    DateTime        @default(now())
+  user         User            @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([reference])
+  @@index([createdAt])
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  WAGER
+  PAYOUT
+  RAKE
+  REFUND
+}
+
+model Room {
+  id            String            @id @default(cuid())
+  hostId        String
+  name          String            @default("Unnamed Table")
+  wagerCents    Int
+  maxPlayers    Int               @default(6)
+  mode          GameMode          @default(SINGLE_ROUND)
+  rerollEnabled Boolean           @default(false)
+  status        RoomStatus        @default(WAITING)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  rounds        GameRound[]
+  participants  GameParticipant[]
+
+  @@index([status])
+  @@index([hostId])
+}
+
+enum GameMode {
+  SINGLE_ROUND
+  ELIMINATION
+}
+
+enum RoomStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model GameParticipant {
+  id        String  @id @default(cuid())
+  roomId    String
+  userId    String
+  isActive  Boolean @default(true)
+  totalWon  Int     @default(0)
+  totalLost Int     @default(0)
+  room      Room    @relation(fields: [roomId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+  @@index([userId])
+}
+
+model GameRound {
+  id          String    @id @default(cuid())
+  roomId      String
+  roundNumber Int
+  rolls       Json?
+  rerolls     Json?
+  scores      Json?
+  losers      Json?
+  potCents    Int       @default(0)
+  rakeCents   Int       @default(0)
+  status      String    @default("PENDING")
+  completedAt DateTime?
+  room        Room      @relation(fields: [roomId], references: [id])
+
+  @@index([roomId])
+}
+
+model ResponsibleGambling {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  dailyDepositLimitCents Int?
+  sessionLimitMinutes    Int?
+  exclusionUntil         DateTime?
+  lastLimitChangeAt      DateTime?
+  user                   User      @relation(fields: [userId], references: [id])
+}
