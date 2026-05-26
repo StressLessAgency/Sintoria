@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "providers": ["node"],
+  "packages": {
+    "node": "20"
+  },
+  "steps": {
+    "install": {
+      "commands": [
+        "cd server && npm ci"
+      ]
+    },
+    "build": {
+      "commands": [
+        "cd server && npx prisma generate"
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "cd server && npx prisma migrate deploy && node src/app.js"
+  }
+}
