@@ -1,209 +1,232 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 
-const PIP_LAYOUTS = {
-  1: [{ row: 1, col: 1 }],
-  2: [{ row: 0, col: 2 }, { row: 2, col: 0 }],
-  3: [{ row: 0, col: 2 }, { row: 1, col: 1 }, { row: 2, col: 0 }],
-  4: [{ row: 0, col: 0 }, { row: 0, col: 2 }, { row: 2, col: 0 }, { row: 2, col: 2 }],
-  5: [{ row: 0, col: 0 }, { row: 0, col: 2 }, { row: 1, col: 1 }, { row: 2, col: 0 }, { row: 2, col: 2 }],
-  6: [{ row: 0, col: 0 }, { row: 0, col: 2 }, { row: 1, col: 0 }, { row: 1, col: 2 }, { row: 2, col: 0 }, { row: 2, col: 2 }],
+const PIPS = {
+  1: [[1, 1]],
+  2: [[0, 2], [2, 0]],
+  3: [[0, 2], [1, 1], [2, 0]],
+  4: [[0, 0], [0, 2], [2, 0], [2, 2]],
+  5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
+  6: [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
 };
 
-function DieFace({ value, size = 56 }) {
-  const pips = PIP_LAYOUTS[value] || [];
-  const pipSize = Math.floor(size * 0.18);
-
-  return (
-    <div
-      className="grid grid-cols-3 grid-rows-3 items-center justify-items-center w-full h-full p-[14%]"
-      style={{ width: size, height: size }}
-    >
-      {[0, 1, 2].map(row =>
-        [0, 1, 2].map(col => {
-          const hasPip = pips.some(p => p.row === row && p.col === col);
-          return (
-            <div
-              key={`${row}-${col}`}
-              className={cn(
-                'rounded-full transition-all duration-200',
-                hasPip ? 'bg-void' : 'bg-transparent'
-              )}
-              style={{ width: pipSize, height: pipSize }}
-            />
-          );
-        })
-      )}
-    </div>
-  );
-}
-
-export function Die({ value, isLocked = false, isRolling = false, delay = 0, size = 56, showValue = true }) {
-  const [displayRolling, setDisplayRolling] = useState(isRolling);
-  const [randomFace, setRandomFace] = useState(1);
-  const intervalRef = useRef(null);
+export function Die({
+  value,
+  rolling = false,
+  delay = 0,
+  size = 60,
+  selected = false,
+  locked = false,
+  onClick,
+}) {
+  const [face, setFace] = useState(value ?? 1);
+  const [tumbling, setTumbling] = useState(false);
+  const intRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
-    if (isRolling) {
-      setDisplayRolling(true);
-      // Rapidly cycle through random faces
-      intervalRef.current = setInterval(() => {
-        setRandomFace(Math.floor(Math.random() * 6) + 1);
-      }, 80);
-
-      // Stop after delay + duration
-      const timeout = setTimeout(() => {
-        clearInterval(intervalRef.current);
-        setDisplayRolling(false);
-      }, delay + 600 + Math.random() * 400);
-
+    if (rolling) {
+      setTumbling(true);
+      intRef.current = setInterval(() => setFace(1 + Math.floor(Math.random() * 6)), 55);
+      timeoutRef.current = setTimeout(() => {
+        clearInterval(intRef.current);
+        setFace(value ?? 1);
+        setTumbling(false);
+      }, 600 + delay + Math.random() * 200);
       return () => {
-        clearTimeout(timeout);
-        clearInterval(intervalRef.current);
+        clearInterval(intRef.current);
+        clearTimeout(timeoutRef.current);
       };
-    } else {
-      setDisplayRolling(false);
     }
-  }, [isRolling, delay]);
+    setFace(value ?? 1);
+    setTumbling(false);
+  }, [rolling, value, delay]);
 
-  const displayValue = displayRolling ? randomFace : value;
-  const isThree = value === 3 && !displayRolling;
+  const isThree = face === 3 && !tumbling;
+  const pips = PIPS[face] || [];
+  const r = Math.max(4, size * 0.16);
+  const pipSize = Math.max(4, size * 0.14);
+
+  const interactive = !!onClick && !locked;
 
   return (
-    <motion.div
-      className={cn(
-        'relative',
-        displayRolling && 'animate-dice-tumble'
-      )}
-      initial={false}
+    <motion.button
+      type="button"
+      onClick={interactive ? onClick : undefined}
+      disabled={!interactive}
+      initial={{ opacity: 0, y: 16, scale: 0.7 }}
       animate={{
+        opacity: 1,
+        y: selected ? -10 : 0,
         scale: isThree ? 0.92 : 1,
-        rotateZ: displayRolling ? [0, 15, -15, 10, -5, 0] : 0,
+        rotate: tumbling ? [0, 14, -10, 6, 0] : 0,
       }}
       transition={{
-        scale: { type: 'spring', damping: 15, stiffness: 300 },
-        rotateZ: { duration: 0.6, delay: delay / 1000 },
+        opacity: { duration: 0.3, delay: delay / 1000 },
+        y: { type: 'spring', damping: 16, stiffness: 220, delay: delay / 1000 },
+        scale: { type: 'spring', damping: 14 },
+        rotate: { duration: 0.42, delay: delay / 1000 },
       }}
+      whileHover={interactive ? { y: -6 } : undefined}
+      whileTap={interactive ? { scale: 0.96 } : undefined}
       style={{ width: size, height: size }}
+      className={cn(
+        'relative shrink-0 p-0 bg-transparent border-0',
+        interactive ? 'cursor-pointer' : 'cursor-default',
+        !interactive && 'pointer-events-none'
+      )}
+      aria-label={`Die showing ${face}${selected ? ', selected' : ''}${locked ? ', locked' : ''}`}
     >
-      {/* Die face */}
       <div
-        className={cn(
-          'rounded-lg border-2 flex items-center justify-center transition-all duration-300',
-          isThree
-            ? 'bg-loss/30 border-loss/60 shadow-inner red-glow'
-            : 'bg-dice border-gold/20',
-          displayRolling && 'border-gold/40'
-        )}
-        style={{ width: size, height: size }}
+        aria-hidden
+        style={{
+          position: 'absolute',
+          bottom: -4,
+          left: '12%',
+          right: '12%',
+          height: 7,
+          background: 'rgba(0,0,0,0.55)',
+          borderRadius: '50%',
+          filter: 'blur(5px)',
+          opacity: isThree ? 0.28 : selected ? 0.75 : 0.6,
+          transition: 'opacity 200ms',
+        }}
+      />
+
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          borderRadius: r,
+          background: isThree
+            ? 'linear-gradient(155deg, #2A0E12 0%, #150708 100%)'
+            : 'linear-gradient(155deg, #F1ECDB 0%, #DDD4BD 48%, #C7BCA0 100%)',
+          border: isThree
+            ? '1.5px solid rgba(232, 75, 59, 0.42)'
+            : '1px solid rgba(170, 158, 130, 0.45)',
+          boxShadow: isThree
+            ? '0 2px 10px rgba(232, 75, 59, 0.18), inset 0 1px 0 rgba(255, 80, 80, 0.06), inset 0 -1px 2px rgba(0,0,0,0.4)'
+            : selected
+              ? '0 0 0 1.5px rgba(255, 208, 106, 0.7), 0 0 26px rgba(255, 208, 106, 0.35), 0 6px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 3px rgba(0,0,0,0.08)'
+              : '0 4px 12px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 3px rgba(0,0,0,0.08)',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: '1fr 1fr 1fr',
+          padding: '18%',
+          position: 'relative',
+          transition: 'box-shadow 220ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+        }}
       >
-        {showValue && displayValue && (
-          <DieFace value={displayValue} size={size} />
+        {[0, 1, 2].flatMap((row) =>
+          [0, 1, 2].map((col) => {
+            const has = pips.some(([pr, pc]) => pr === row && pc === col);
+            return (
+              <div
+                key={`${row}-${col}`}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {has && (
+                  <div
+                    style={{
+                      width: pipSize,
+                      height: pipSize,
+                      borderRadius: '50%',
+                      background: isThree
+                        ? 'radial-gradient(circle at 40% 35%, #FF5C4A, #8A1A1A)'
+                        : 'radial-gradient(circle at 40% 35%, #3A362C, #15130E)',
+                      boxShadow: isThree
+                        ? '0 0 4px rgba(232, 75, 59, 0.35), inset 0 -1px 1px rgba(0,0,0,0.25)'
+                        : 'inset 0 1px 2px rgba(0,0,0,0.3)',
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Lock icon for 3s */}
-      {isThree && !displayRolling && (
-        <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="absolute -top-1 -right-1 w-5 h-5 bg-loss rounded-full flex items-center justify-center"
-        >
-          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-          </svg>
-        </motion.div>
-      )}
-
-      {/* Winner glow */}
-      {!isThree && !displayRolling && value && (
-        <motion.div
-          className="absolute inset-0 rounded-lg"
-          initial={{ boxShadow: '0 0 0 rgba(200, 134, 42, 0)' }}
-          animate={{
-            boxShadow: [
-              '0 0 0 rgba(200, 134, 42, 0)',
-              '0 0 15px rgba(200, 134, 42, 0.3)',
-              '0 0 0 rgba(200, 134, 42, 0)',
-            ],
+      {locked && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: -4,
+            borderRadius: r + 4,
+            border: '1px dashed rgba(195, 149, 72, 0.35)',
+            pointerEvents: 'none',
           }}
-          transition={{ duration: 1, delay: delay / 1000 + 0.6 }}
         />
       )}
-    </motion.div>
+    </motion.button>
   );
 }
 
-export function DiceRow({ dice, isRolling = false, size = 56, className }) {
-  if (!dice || dice.length === 0) {
-    // Empty dice slots
+export function DiceTray({ dice, rolling = false, size = 60, className }) {
+  if (!dice) {
     return (
-      <div className={cn('flex gap-2', className)}>
-        {[...Array(6)].map((_, i) => (
+      <div className={cn('flex justify-center gap-2', className)}>
+        {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-lg border border-dashed border-txt-faint/30 bg-void/50"
-            style={{ width: size, height: size }}
+            style={{ width: size, height: size, borderRadius: size * 0.16 }}
+            className="border border-hairline opacity-25"
           />
         ))}
       </div>
     );
   }
-
   return (
-    <div className={cn('flex gap-2 flex-wrap justify-center', className)}>
-      {dice.map((value, i) => (
-        <Die
-          key={i}
-          value={value}
-          isLocked={value === 3}
-          isRolling={isRolling}
-          delay={i * 80}
-          size={size}
+    <div className={cn('flex justify-center gap-2', className)}>
+      {dice.map((v, i) => (
+        <Die key={i} value={v} rolling={rolling} delay={i * 70} size={size} />
+      ))}
+    </div>
+  );
+}
+
+export function LockedRow({ dice = [], size = 28, total = 5 }) {
+  return (
+    <div className="flex items-end gap-1.5">
+      {dice.map((v, i) => (
+        <Die key={i} value={v} size={size} locked />
+      ))}
+      {Array.from({ length: Math.max(0, total - dice.length) }).map((_, i) => (
+        <div
+          key={`empty-${i}`}
+          style={{ width: size, height: size, borderRadius: size * 0.16 }}
+          className="border border-dashed border-bone-faint/30"
         />
       ))}
     </div>
   );
 }
 
-export function ScoreDisplay({ score, isLoser, isWinner, animate = false }) {
-  const [displayScore, setDisplayScore] = useState(0);
-
-  useEffect(() => {
-    if (!animate || score == null) {
-      setDisplayScore(score);
-      return;
-    }
-
-    // Odometer effect
-    let current = 0;
-    const step = Math.max(1, Math.ceil(score / 20));
-    const interval = setInterval(() => {
-      current += step;
-      if (current >= score) {
-        current = score;
-        clearInterval(interval);
-      }
-      setDisplayScore(current);
-    }, 30);
-
-    return () => clearInterval(interval);
-  }, [score, animate]);
-
+export function ScoreDisplay({ score, tone = 'neutral', size = 'md' }) {
+  if (score == null) return null;
+  const sizes = { sm: 16, md: 22, lg: 36, xl: 56 };
+  const colors = {
+    neutral: 'var(--bone)',
+    win: 'var(--gold-bright)',
+    lose: 'var(--red-hot)',
+    dim: 'var(--bone-dim)',
+  };
   return (
     <motion.span
-      className={cn(
-        'font-mono text-2xl font-bold tabular-nums',
-        isLoser && 'text-loss',
-        isWinner && 'text-gold-bright',
-        !isLoser && !isWinner && 'text-txt-primary'
-      )}
-      initial={animate ? { scale: 0.8, opacity: 0 } : false}
+      initial={{ scale: 0.7, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', damping: 12 }}
+      transition={{ type: 'spring', damping: 14, stiffness: 200 }}
+      className="font-mono"
+      style={{
+        fontSize: sizes[size],
+        fontWeight: 600,
+        color: colors[tone] || colors.neutral,
+        letterSpacing: '-0.02em',
+        textShadow: tone === 'win' ? '0 0 20px rgba(255, 208, 106, 0.35)' : 'none',
+      }}
     >
-      {displayScore ?? '-'}
+      {score}
     </motion.span>
   );
 }

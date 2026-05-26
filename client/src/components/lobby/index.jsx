@@ -1,69 +1,80 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { cn, formatMoney, getWagerTier, timeAgo } from '../../lib/utils';
+import { cn, formatMoney, timeAgo } from '../../lib/utils';
 import { Button, Input, Modal, Badge } from '../ui/index';
 
 export function RoomCard({ room, index }) {
   const navigate = useNavigate();
-  const tier = getWagerTier(room.wagerCents);
   const isFull = room.playerCount >= room.maxPlayers;
+  const isLive = room.status === 'IN_PROGRESS';
 
   return (
-    <motion.div
-      className={cn(
-        'card cursor-pointer group',
-        room.status === 'IN_PROGRESS' && 'border-win/20',
-        isFull && 'opacity-60'
-      )}
-      initial={{ opacity: 0, y: 20 }}
+    <motion.button
+      type="button"
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      onClick={() => navigate(`/room/${room.id}`)}
+      transition={{ delay: index * 0.04, duration: 0.4, ease: [0.2, 0.7, 0.2, 1] }}
       whileHover={{ y: -2 }}
+      onClick={() => navigate(`/room/${room.id}`)}
+      disabled={isFull && !isLive}
+      className={cn(
+        'surface group text-left p-5 transition-all w-full',
+        'hover:border-hairline-hi',
+        isFull && !isLive && 'opacity-50 cursor-not-allowed',
+        isLive && 'border-green/30'
+      )}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-body font-semibold text-txt-primary group-hover:text-gold transition-colors">
+      <div className="flex items-start justify-between mb-5">
+        <div className="min-w-0">
+          <div className="eyebrow !text-[9px] mb-1">Table</div>
+          <h3 className="font-display text-xl text-bone group-hover:text-gold-bright transition-colors truncate" style={{ letterSpacing: '-0.01em' }}>
             {room.name}
           </h3>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant={tier.class.replace('badge-', '')} className="text-[10px]">
-              {tier.label}
-            </Badge>
+        </div>
+        <div className="text-right shrink-0 ml-3">
+          <div className="eyebrow !text-[9px] mb-0.5">Ante</div>
+          <div className="font-mono text-[18px] text-gold-bright font-medium tabular-nums">
+            {formatMoney(room.wagerCents)}
           </div>
         </div>
-        <span className="font-mono text-lg font-bold text-gold-bright">
-          {formatMoney(room.wagerCents)}
-        </span>
       </div>
 
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center gap-4 text-txt-muted font-mono text-xs">
-          <span className="flex items-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-            </svg>
-            {room.playerCount}/{room.maxPlayers}
-          </span>
-          <span>{timeAgo(room.createdAt)}</span>
+      <div className="flex items-end justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: room.maxPlayers }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  'w-1.5 h-1.5 rounded-full',
+                  i < room.playerCount ? 'bg-gold-bright' : 'bg-hairline'
+                )}
+              />
+            ))}
+          </div>
+          <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-bone-faint">
+            {room.playerCount}/{room.maxPlayers} seated · {timeAgo(room.createdAt)}
+          </div>
         </div>
-        {room.status === 'IN_PROGRESS' ? (
-          <Badge variant="pulse">LIVE</Badge>
-        ) : isFull ? (
-          <Badge variant="danger">FULL</Badge>
-        ) : (
-          <span className="text-xs text-gold font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-            JOIN &rarr;
-          </span>
-        )}
+        <div>
+          {isLive ? (
+            <Badge variant="pulse">Live</Badge>
+          ) : isFull ? (
+            <Badge variant="danger">Full</Badge>
+          ) : (
+            <span className="font-mono text-[11px] tracking-[0.18em] uppercase text-bone-dim group-hover:text-gold-bright transition-colors">
+              Sit →
+            </span>
+          )}
+        </div>
       </div>
-    </motion.div>
+    </motion.button>
   );
 }
 
 export function RoomFilters({ filters, onChange }) {
-  const wagerPresets = [
+  const presets = [
     { label: 'All', min: null, max: null },
     { label: 'Micro', min: 25, max: 99 },
     { label: 'Low', min: 100, max: 500 },
@@ -72,21 +83,24 @@ export function RoomFilters({ filters, onChange }) {
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {wagerPresets.map(preset => (
-        <button
-          key={preset.label}
-          onClick={() => onChange({ ...filters, minWager: preset.min, maxWager: preset.max })}
-          className={cn(
-            'px-3 py-1.5 text-xs font-mono border transition-all',
-            filters.minWager === preset.min && filters.maxWager === preset.max
-              ? 'border-gold bg-gold/10 text-gold'
-              : 'border-gold/10 text-txt-muted hover:border-gold/30'
-          )}
-        >
-          {preset.label}
-        </button>
-      ))}
+    <div className="flex flex-wrap items-center gap-1">
+      {presets.map((p) => {
+        const active = filters.minWager === p.min && filters.maxWager === p.max;
+        return (
+          <button
+            key={p.label}
+            onClick={() => onChange({ ...filters, minWager: p.min, maxWager: p.max })}
+            className={cn(
+              'px-3 py-1.5 text-[11px] tracking-[0.16em] uppercase font-mono transition-all border',
+              active
+                ? 'border-gold text-gold-bright bg-gold/5'
+                : 'border-transparent text-bone-dim hover:text-bone hover:border-hairline'
+            )}
+          >
+            {p.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -97,66 +111,70 @@ export function CreateRoomModal({ isOpen, onClose, onCreate, isLoading }) {
     wagerCents: 100,
     maxPlayers: 4,
   });
-
   const wagerOptions = [25, 50, 100, 250, 500, 1000, 2500, 5000];
 
-  const handleSubmit = () => {
-    onCreate({
-      ...form,
-      name: form.name || undefined,
-    });
-  };
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Table">
-      <div className="space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} title="New Table">
+      <div className="space-y-7">
         <Input
-          label="Table name (optional)"
+          label="Table Name"
           placeholder="My Table"
           value={form.name}
-          onChange={e => setForm({ ...form, name: e.target.value })}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
           maxLength={30}
         />
 
         <div>
-          <label className="block text-sm text-txt-muted mb-2">Wager per round</label>
-          <div className="grid grid-cols-4 gap-2">
-            {wagerOptions.map(cents => (
-              <button
-                key={cents}
-                onClick={() => setForm({ ...form, wagerCents: cents })}
-                className={cn(
-                  'py-2 text-sm font-mono border transition-all',
-                  form.wagerCents === cents
-                    ? 'border-gold bg-gold/10 text-gold-bright'
-                    : 'border-gold/10 text-txt-muted hover:border-gold/30'
-                )}
-              >
-                {formatMoney(cents)}
-              </button>
-            ))}
+          <label className="field-label">Ante per hand</label>
+          <div className="grid grid-cols-4 gap-1.5 mt-2">
+            {wagerOptions.map((cents) => {
+              const active = form.wagerCents === cents;
+              return (
+                <button
+                  key={cents}
+                  onClick={() => setForm({ ...form, wagerCents: cents })}
+                  className={cn(
+                    'py-2.5 text-[12px] font-mono tabular-nums border transition-all',
+                    active
+                      ? 'border-gold bg-gold/10 text-gold-bright'
+                      : 'border-hairline text-bone-dim hover:text-bone hover:border-hairline-hi'
+                  )}
+                >
+                  {formatMoney(cents)}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div>
-          <label className="block text-sm text-txt-muted mb-2">
-            Players: <span className="text-gold font-mono">{form.maxPlayers}</span>
-          </label>
+          <div className="flex items-baseline justify-between mb-2">
+            <label className="field-label !mb-0">Players</label>
+            <span className="font-mono text-[18px] text-gold-bright tabular-nums">
+              {form.maxPlayers}
+            </span>
+          </div>
           <input
             type="range"
             min={2}
             max={6}
             value={form.maxPlayers}
-            onChange={e => setForm({ ...form, maxPlayers: parseInt(e.target.value) })}
-            className="w-full accent-gold"
+            onChange={(e) => setForm({ ...form, maxPlayers: parseInt(e.target.value, 10) })}
+            className="w-full accent-gold-bright"
           />
-          <div className="flex justify-between text-xs text-txt-faint font-mono">
-            <span>2</span><span>6</span>
+          <div className="flex justify-between font-mono text-[10px] tracking-[0.16em] uppercase text-bone-faint mt-1">
+            <span>2 min</span>
+            <span>6 max</span>
           </div>
         </div>
 
-        <Button variant="primary" className="w-full" onClick={handleSubmit} loading={isLoading}>
-          Create Table &middot; {formatMoney(form.wagerCents)} ante
+        <Button
+          className="w-full"
+          size="lg"
+          loading={isLoading}
+          onClick={() => onCreate({ ...form, name: form.name || undefined })}
+        >
+          Open Table · {formatMoney(form.wagerCents)} ante
         </Button>
       </div>
     </Modal>

@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn, formatMoney, timeAgo } from '../../lib/utils';
-import { Button, Input } from '../ui/index';
+import { Button, Input, Skeleton } from '../ui/index';
 
 export function BalanceDisplay({ balanceCents, compact = false }) {
   return (
-    <div className={cn(
-      'flex items-center gap-2',
-      compact ? 'text-sm' : 'text-lg'
-    )}>
-      <svg className={cn('text-gold', compact ? 'w-4 h-4' : 'w-5 h-5')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 013 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 013 6v3" />
-      </svg>
+    <div className={cn('flex items-baseline gap-2', compact ? 'text-sm' : 'text-base')}>
+      <span className="font-mono text-[9px] tracking-[0.22em] uppercase text-bone-dim">
+        Balance
+      </span>
       <motion.span
-        className="font-mono font-bold text-gold-bright tabular-nums"
         key={balanceCents}
-        initial={{ scale: 1.1 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', damping: 15 }}
+        initial={{ scale: 1.08, opacity: 0.6 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', damping: 16 }}
+        className="font-mono font-medium text-gold-bright tabular-nums"
+        style={{ fontSize: compact ? 14 : 16 }}
       >
         {formatMoney(balanceCents)}
       </motion.span>
@@ -36,42 +34,53 @@ export function DepositForm({ onDeposit, isLoading }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-5 gap-2">
-        {presets.map(cents => (
-          <button
-            key={cents}
-            onClick={() => setAmount((cents / 100).toFixed(2))}
-            className={cn(
-              'py-2 text-sm font-mono border transition-all',
-              amount === (cents / 100).toFixed(2)
-                ? 'border-gold bg-gold/10 text-gold'
-                : 'border-gold/15 text-txt-muted hover:border-gold/30 hover:text-txt-primary'
-            )}
-          >
-            {formatMoney(cents)}
-          </button>
-        ))}
+    <div className="space-y-7">
+      <div>
+        <label className="field-label">Quick add</label>
+        <div className="grid grid-cols-5 gap-1.5 mt-2">
+          {presets.map((cents) => {
+            const active = amount === (cents / 100).toFixed(2);
+            return (
+              <button
+                key={cents}
+                onClick={() => setAmount((cents / 100).toFixed(2))}
+                className={cn(
+                  'py-2.5 text-[12px] font-mono tabular-nums border transition-all',
+                  active
+                    ? 'border-gold bg-gold/10 text-gold-bright'
+                    : 'border-hairline text-bone-dim hover:text-bone hover:border-hairline-hi'
+                )}
+              >
+                {formatMoney(cents)}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Input
-          label="Custom amount"
+          label="Custom Amount"
           type="number"
           step="0.01"
           min="5.00"
           max="1000.00"
           placeholder="0.00"
           value={amount}
-          onChange={e => setAmount(e.target.value)}
+          onChange={(e) => setAmount(e.target.value)}
         />
-        <Button variant="primary" className="w-full" loading={isLoading} disabled={!amount || parseFloat(amount) < 5}>
+        <Button
+          className="w-full"
+          size="lg"
+          loading={isLoading}
+          disabled={!amount || parseFloat(amount) < 5}
+        >
           Deposit {amount ? formatMoney(Math.round(parseFloat(amount) * 100)) : ''}
         </Button>
       </form>
 
-      <p className="text-xs text-txt-faint text-center">
-        Minimum $5.00 &middot; Maximum $1,000.00
+      <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-bone-faint text-center">
+        Minimum $5.00 · Maximum $1,000.00
       </p>
     </div>
   );
@@ -82,14 +91,16 @@ export function WithdrawForm({ balanceCents, onWithdraw, isLoading, kycStatus })
 
   if (kycStatus !== 'APPROVED') {
     return (
-      <div className="text-center space-y-4 py-8">
-        <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto">
-          <svg className="w-8 h-8 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" />
-          </svg>
+      <div className="text-center space-y-4 py-10">
+        <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-gold-bright">
+          Verification Required
         </div>
-        <p className="text-txt-muted font-body">KYC verification required before withdrawals.</p>
-        <p className="text-xs text-txt-faint">Contact support to start the process.</p>
+        <h3 className="font-display text-2xl text-bone" style={{ letterSpacing: '-0.01em' }}>
+          KYC needed first.
+        </h3>
+        <p className="font-ui text-[13px] text-bone-dim max-w-xs mx-auto">
+          We verify identity before any withdrawal. Contact support to start.
+        </p>
       </div>
     );
   }
@@ -101,25 +112,30 @@ export function WithdrawForm({ balanceCents, onWithdraw, isLoading, kycStatus })
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="text-sm text-txt-muted mb-2">
-        Available: <span className="text-gold font-mono">{formatMoney(balanceCents)}</span>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="flex items-baseline justify-between font-mono text-[11px] tracking-[0.16em] uppercase">
+        <span className="text-bone-dim">Available</span>
+        <span className="text-gold-bright tabular-nums">{formatMoney(balanceCents)}</span>
       </div>
       <Input
-        label="Withdrawal amount"
+        label="Withdraw Amount"
         type="number"
         step="0.01"
         min="10.00"
         max={(balanceCents / 100).toFixed(2)}
         placeholder="0.00"
         value={amount}
-        onChange={e => setAmount(e.target.value)}
+        onChange={(e) => setAmount(e.target.value)}
       />
-      <Button variant="ghost" className="w-full" loading={isLoading} disabled={!amount || parseFloat(amount) < 10}>
+      <button
+        type="submit"
+        disabled={isLoading || !amount || parseFloat(amount) < 10}
+        className="btn-ghost w-full"
+      >
         Withdraw {amount ? formatMoney(Math.round(parseFloat(amount) * 100)) : ''}
-      </Button>
-      <p className="text-xs text-txt-faint text-center">
-        Minimum $10.00 &middot; Processing takes 3-5 business days
+      </button>
+      <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-bone-faint text-center">
+        Minimum $10.00 · 3–5 business days
       </p>
     </form>
   );
@@ -128,9 +144,9 @@ export function WithdrawForm({ balanceCents, onWithdraw, isLoading, kycStatus })
 export function TxHistory({ transactions, isLoading }) {
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="skeleton h-12" />
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12" />
         ))}
       </div>
     );
@@ -138,43 +154,50 @@ export function TxHistory({ transactions, isLoading }) {
 
   if (!transactions?.transactions?.length) {
     return (
-      <div className="text-center py-8 text-txt-muted text-sm">
+      <div className="text-center py-12 font-mono text-[11px] tracking-[0.16em] uppercase text-bone-faint">
         No transactions yet
       </div>
     );
   }
 
-  const typeIcons = {
-    DEPOSIT: { icon: '↓', color: 'text-win' },
-    WITHDRAWAL: { icon: '↑', color: 'text-loss' },
-    WAGER: { icon: '⬢', color: 'text-loss' },
-    PAYOUT: { icon: '★', color: 'text-gold-bright' },
-    REFUND: { icon: '↩', color: 'text-txt-muted' },
+  const toneFor = (type, amount) => {
+    if (type === 'DEPOSIT' || type === 'PAYOUT') return 'text-green';
+    if (type === 'WITHDRAWAL' || type === 'WAGER') return 'text-red-hot';
+    if (amount > 0) return 'text-green';
+    return 'text-bone-dim';
+  };
+
+  const labels = {
+    DEPOSIT: 'Deposit',
+    WITHDRAWAL: 'Withdrawal',
+    WAGER: 'Ante',
+    PAYOUT: 'Payout',
+    REFUND: 'Refund',
+    RAKE: 'Rake',
   };
 
   return (
-    <div className="space-y-1">
-      {transactions.transactions.map(tx => {
-        const config = typeIcons[tx.type] || { icon: '·', color: 'text-txt-muted' };
+    <div className="divide-y divide-hairline">
+      {transactions.transactions.map((tx) => {
+        const positive = tx.amountCents > 0;
         return (
-          <div key={tx.id} className="flex items-center justify-between py-3 px-3 hover:bg-surface/50 transition-colors">
-            <div className="flex items-center gap-3">
-              <span className={cn('text-lg', config.color)}>{config.icon}</span>
-              <div>
-                <span className="text-sm font-mono">{tx.type}</span>
-                <p className="text-xs text-txt-faint">{timeAgo(tx.createdAt)}</p>
+          <div key={tx.id} className="flex items-center justify-between py-4">
+            <div>
+              <div className="font-ui text-[13px] text-bone font-medium">
+                {labels[tx.type] || tx.type}
+              </div>
+              <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-bone-faint mt-0.5">
+                {timeAgo(tx.createdAt)}
               </div>
             </div>
             <div className="text-right">
-              <span className={cn(
-                'font-mono font-bold text-sm',
-                tx.amountCents > 0 ? 'text-win' : 'text-loss'
-              )}>
-                {tx.amountCents > 0 ? '+' : ''}{formatMoney(tx.amountCents)}
-              </span>
-              <p className="text-xs text-txt-faint font-mono">
-                bal: {formatMoney(tx.balanceCents)}
-              </p>
+              <div className={cn('font-mono text-[14px] font-medium tabular-nums', toneFor(tx.type, tx.amountCents))}>
+                {positive ? '+' : ''}
+                {formatMoney(tx.amountCents)}
+              </div>
+              <div className="font-mono text-[10px] text-bone-faint tabular-nums mt-0.5">
+                bal {formatMoney(tx.balanceCents)}
+              </div>
             </div>
           </div>
         );

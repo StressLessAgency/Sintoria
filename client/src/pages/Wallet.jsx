@@ -4,20 +4,19 @@ import { motion } from 'framer-motion';
 import { useWallet } from '../hooks/useWallet';
 import { useAuthStore } from '../store/authStore';
 import { formatMoney, cn } from '../lib/utils';
-import { Button } from '../components/ui/index';
+import { Eyebrow, toast } from '../components/ui/index';
 import { BalanceDisplay, DepositForm, WithdrawForm, TxHistory } from '../components/wallet/index';
-import { toast } from '../components/ui/index';
 
 export default function Wallet() {
   const [tab, setTab] = useState('deposit');
-  const user = useAuthStore(s => s.user);
-  const { balance, transactions, isLoadingTransactions, deposit, withdraw, refetchBalance } = useWallet();
+  const user = useAuthStore((s) => s.user);
+  const { balance, transactions, isLoadingTransactions, deposit, withdraw, refetchBalance } =
+    useWallet();
 
   const handleDeposit = async (amountCents) => {
     try {
-      const result = await deposit.mutateAsync(amountCents);
-      toast(`Deposit initiated: ${formatMoney(amountCents)}. Complete payment via Stripe.`, 'success');
-      // In production, this would redirect to Stripe Checkout or open Elements
+      await deposit.mutateAsync(amountCents);
+      toast(`Deposit initiated: ${formatMoney(amountCents)}. Complete via Stripe.`, 'success');
     } catch (err) {
       toast(err.response?.data?.error || 'Deposit failed', 'error');
     }
@@ -34,44 +33,53 @@ export default function Wallet() {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-gold/5 px-6 py-3">
+    <div className="relative min-h-screen text-bone overflow-hidden">
+      <div className="overhead-cone" />
+
+      <header className="relative z-10 border-b border-hairline px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/lobby" className="text-txt-muted hover:text-gold transition-colors text-sm">
-              &larr; Lobby
+            <Link
+              to="/lobby"
+              className="font-mono text-[11px] tracking-[0.18em] uppercase text-bone-dim hover:text-gold-bright transition-colors"
+            >
+              ← Lobby
             </Link>
-            <span className="font-display text-xl text-gold">Wallet</span>
+            <div className="w-px h-3.5 bg-hairline" />
+            <span className="font-display text-[18px] tracking-[0.04em] text-bone">Wallet</span>
           </div>
-          <BalanceDisplay balanceCents={balance} />
+          <BalanceDisplay balanceCents={balance} compact />
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {/* Balance card */}
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
         <motion.div
-          className="card gold-glow text-center py-10 mb-8"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
+          className="text-center py-10 mb-10"
         >
-          <span className="text-xs font-mono text-txt-muted uppercase tracking-widest block mb-2">Balance</span>
-          <span className="font-mono text-5xl font-bold text-gold-bright">{formatMoney(balance)}</span>
+          <Eyebrow>Balance</Eyebrow>
+          <div
+            className="font-display gold-text mt-2"
+            style={{ fontSize: 'clamp(56px, 8vw, 96px)', lineHeight: 1, letterSpacing: '-0.02em' }}
+          >
+            {formatMoney(balance)}
+          </div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Deposit / Withdraw */}
-          <div className="card">
-            <div className="flex border-b border-gold/10 mb-6">
-              {['deposit', 'withdraw'].map(t => (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="surface p-7">
+            <div className="flex border-b border-hairline mb-7 -mt-2">
+              {['deposit', 'withdraw'].map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   className={cn(
-                    'flex-1 py-3 text-sm font-mono uppercase tracking-widest transition-all border-b-2 -mb-px',
+                    'flex-1 py-3 font-mono text-[11px] tracking-[0.18em] uppercase transition-all border-b -mb-px',
                     tab === t
-                      ? 'border-gold text-gold'
-                      : 'border-transparent text-txt-muted hover:text-txt-primary'
+                      ? 'border-gold-bright text-gold-bright'
+                      : 'border-transparent text-bone-dim hover:text-bone'
                   )}
                 >
                   {t}
@@ -91,18 +99,17 @@ export default function Wallet() {
             )}
           </div>
 
-          {/* Transaction history */}
-          <div className="card">
-            <h3 className="text-sm font-mono text-txt-muted uppercase tracking-widest mb-4">History</h3>
-            <TxHistory transactions={transactions} isLoading={isLoadingTransactions} />
+          <div className="surface p-7">
+            <Eyebrow>History</Eyebrow>
+            <div className="mt-5">
+              <TxHistory transactions={transactions} isLoading={isLoadingTransactions} />
+            </div>
           </div>
         </div>
 
-        {/* Compliance notice */}
-        <div className="mt-8 p-4 border border-gold/10 bg-surface text-xs text-txt-faint font-body text-center">
-          All deposits and withdrawals are processed via Stripe. Withdrawals require KYC verification.
-          Gambling involves risk. Please play responsibly.
-        </div>
+        <p className="mt-10 px-6 py-4 border border-hairline text-center font-mono text-[10px] tracking-[0.16em] uppercase text-bone-faint">
+          Deposits and withdrawals process via Stripe · Withdrawals require KYC · Play responsibly
+        </p>
       </main>
     </div>
   );

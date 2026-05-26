@@ -2,11 +2,14 @@
   "name": "threes",
   "private": true,
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "build": "cd server && npm ci && npx prisma generate",
     "start": "cd server && npx prisma migrate deploy && node src/app.js",
     "postinstall": "cd server && npm ci && npx prisma generate"
+  },
+  "devDependencies": {
+    "@vercel/config": "^1.0.0"
   }
 }

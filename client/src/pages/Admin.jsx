@@ -4,8 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { formatMoney, cn, timeAgo } from '../lib/utils';
-import { Button, Input, Badge } from '../components/ui/index';
-import { toast } from '../components/ui/index';
+import { Input, Badge, Eyebrow, Skeleton, toast } from '../components/ui/index';
 
 export default function Admin() {
   const queryClient = useQueryClient();
@@ -20,7 +19,8 @@ export default function Admin() {
 
   const usersQuery = useQuery({
     queryKey: ['admin', 'users', userSearch],
-    queryFn: async () => (await api.get('/admin/users', { params: { search: userSearch || undefined } })).data,
+    queryFn: async () =>
+      (await api.get('/admin/users', { params: { search: userSearch || undefined } })).data,
     enabled: activeTab === 'users',
   });
 
@@ -37,7 +37,8 @@ export default function Admin() {
   });
 
   const suspendUser = useMutation({
-    mutationFn: async ({ id, suspended }) => (await api.put(`/admin/users/${id}/suspend`, { suspended })).data,
+    mutationFn: async ({ id, suspended }) =>
+      (await api.put(`/admin/users/${id}/suspend`, { suspended })).data,
     onSuccess: () => {
       toast('User updated', 'success');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
@@ -45,7 +46,8 @@ export default function Admin() {
   });
 
   const updateKyc = useMutation({
-    mutationFn: async ({ id, status }) => (await api.put(`/admin/users/${id}/kyc`, { status })).data,
+    mutationFn: async ({ id, status }) =>
+      (await api.put(`/admin/users/${id}/kyc`, { status })).data,
     onSuccess: () => {
       toast('KYC updated', 'success');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
@@ -53,112 +55,142 @@ export default function Admin() {
   });
 
   const dash = dashQuery.data;
-  const tabs = ['dashboard', 'users', 'games', 'financials'];
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'users', label: 'Users' },
+    { id: 'games', label: 'Games' },
+    { id: 'financials', label: 'Financials' },
+  ];
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-gold/5 px-6 py-3">
+    <div className="relative min-h-screen text-bone overflow-hidden">
+      <div className="overhead-cone" />
+
+      <header className="relative z-10 border-b border-hairline px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/lobby" className="text-txt-muted hover:text-gold transition-colors text-sm">&larr; Lobby</Link>
-            <span className="font-display text-xl text-gold">Admin</span>
+            <Link
+              to="/lobby"
+              className="font-mono text-[11px] tracking-[0.18em] uppercase text-bone-dim hover:text-gold-bright transition-colors"
+            >
+              ← Lobby
+            </Link>
+            <div className="w-px h-3.5 bg-hairline" />
+            <span className="font-display text-[18px] text-bone">Admin</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex border-b border-gold/10 mb-8">
-          {tabs.map(t => (
+      <main className="relative z-10 max-w-6xl mx-auto px-6 py-12">
+        <div className="flex gap-1 border-b border-hairline mb-10">
+          {tabs.map((t) => (
             <button
-              key={t}
-              onClick={() => setActiveTab(t)}
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
               className={cn(
-                'px-6 py-3 text-sm font-mono uppercase tracking-widest transition-all border-b-2 -mb-px',
-                activeTab === t ? 'border-gold text-gold' : 'border-transparent text-txt-muted hover:text-txt-primary'
+                'px-5 py-3 font-mono text-[11px] tracking-[0.18em] uppercase transition-all border-b -mb-px',
+                activeTab === t.id
+                  ? 'border-gold-bright text-gold-bright'
+                  : 'border-transparent text-bone-dim hover:text-bone'
               )}
             >
-              {t}
+              {t.label}
             </button>
           ))}
         </div>
 
-        {/* Dashboard */}
         {activeTab === 'dashboard' && dash && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Active Tables', value: dash.live.activeRooms },
-                { label: 'Online Players', value: dash.live.totalPlayers },
-                { label: 'In Play', value: formatMoney(dash.live.totalInPlayCents), color: 'text-gold-bright' },
-                { label: 'Total Users', value: dash.totalUsers },
-              ].map(stat => (
-                <div key={stat.label} className="card text-center">
-                  <span className="text-xs font-mono text-txt-muted uppercase tracking-widest block mb-1">{stat.label}</span>
-                  <span className={cn('font-mono text-2xl font-bold', stat.color || 'text-txt-primary')}>{stat.value}</span>
+                { label: 'Tables', value: dash.live.activeRooms },
+                { label: 'Players', value: dash.live.totalPlayers },
+                { label: 'In Play', value: formatMoney(dash.live.totalInPlayCents), tone: 'text-gold-bright' },
+                { label: 'Users', value: dash.totalUsers },
+              ].map((s) => (
+                <div key={s.label} className="surface p-5">
+                  <Eyebrow>{s.label}</Eyebrow>
+                  <div className={cn('font-mono text-2xl font-medium tabular-nums mt-2', s.tone || 'text-bone')}>
+                    {s.value}
+                  </div>
                 </div>
               ))}
             </div>
 
-            <h3 className="text-sm font-mono text-txt-muted uppercase tracking-widest mb-4">Today</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="card text-center">
-                <span className="text-xs font-mono text-txt-muted block mb-1">Deposits</span>
-                <span className="font-mono text-xl text-win">{formatMoney(dash.today.deposits.totalCents)}</span>
-                <span className="text-xs text-txt-faint block">{dash.today.deposits.count} txns</span>
-              </div>
-              <div className="card text-center">
-                <span className="text-xs font-mono text-txt-muted block mb-1">Withdrawals</span>
-                <span className="font-mono text-xl text-loss">{formatMoney(dash.today.withdrawals.totalCents)}</span>
-                <span className="text-xs text-txt-faint block">{dash.today.withdrawals.count} txns</span>
-              </div>
-              <div className="card text-center">
-                <span className="text-xs font-mono text-txt-muted block mb-1">Rake</span>
-                <span className="font-mono text-xl text-gold-bright">{formatMoney(dash.today.rakeCents)}</span>
+            <div>
+              <Eyebrow>Today</Eyebrow>
+              <div className="grid grid-cols-3 gap-4 mt-3">
+                <SmallStat label="Deposits" value={formatMoney(dash.today.deposits.totalCents)} sub={`${dash.today.deposits.count} txns`} tone="text-green" />
+                <SmallStat label="Withdrawals" value={formatMoney(dash.today.withdrawals.totalCents)} sub={`${dash.today.withdrawals.count} txns`} tone="text-red-hot" />
+                <SmallStat label="Rake" value={formatMoney(dash.today.rakeCents)} tone="text-gold-bright" />
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Users */}
         {activeTab === 'users' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="mb-6">
               <Input
-                placeholder="Search by email or username..."
+                placeholder="Search by email or username"
                 value={userSearch}
-                onChange={e => setUserSearch(e.target.value)}
+                onChange={(e) => setUserSearch(e.target.value)}
               />
             </div>
             {usersQuery.isLoading ? (
-              <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="skeleton h-12" />)}</div>
-            ) : (
               <div className="space-y-2">
-                {usersQuery.data?.users?.map(u => (
-                  <div key={u.id} className="card flex items-center justify-between py-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14" />
+                ))}
+              </div>
+            ) : (
+              <div className="divide-y divide-hairline">
+                {usersQuery.data?.users?.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-surface border border-gold/15 flex items-center justify-center font-mono text-xs text-txt-muted">
+                      <div className="w-9 h-9 rounded-full bg-ash flex items-center justify-center font-mono text-[11px] text-bone-dim">
                         {u.username?.[0]?.toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-mono">{u.username}</p>
-                        <p className="text-xs text-txt-faint">{u.email}</p>
+                        <div className="font-ui text-[13px] text-bone">{u.username}</div>
+                        <div className="font-mono text-[10px] text-bone-faint">{u.email}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant={u.kycStatus === 'APPROVED' ? 'success' : u.kycStatus === 'REJECTED' ? 'danger' : 'default'} className="text-[10px]">
-                        KYC: {u.kycStatus}
+                    <div className="flex items-center gap-4">
+                      <Badge
+                        variant={
+                          u.kycStatus === 'APPROVED'
+                            ? 'success'
+                            : u.kycStatus === 'REJECTED'
+                              ? 'danger'
+                              : 'default'
+                        }
+                      >
+                        KYC {u.kycStatus}
                       </Badge>
-                      <span className="font-mono text-sm text-gold">{formatMoney(u.wallet?.balanceCents || 0)}</span>
-                      <div className="flex gap-1">
+                      <span className="font-mono text-[13px] text-gold-bright tabular-nums">
+                        {formatMoney(u.wallet?.balanceCents || 0)}
+                      </span>
+                      <div className="flex gap-3 font-mono text-[10px] tracking-[0.16em] uppercase">
                         {u.kycStatus === 'SUBMITTED' && (
                           <>
-                            <button onClick={() => updateKyc.mutate({ id: u.id, status: 'APPROVED' })} className="text-xs text-win hover:underline">Approve</button>
-                            <button onClick={() => updateKyc.mutate({ id: u.id, status: 'REJECTED' })} className="text-xs text-loss hover:underline">Reject</button>
+                            <button
+                              onClick={() => updateKyc.mutate({ id: u.id, status: 'APPROVED' })}
+                              className="text-green hover:underline"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => updateKyc.mutate({ id: u.id, status: 'REJECTED' })}
+                              className="text-red-hot hover:underline"
+                            >
+                              Reject
+                            </button>
                           </>
                         )}
                         <button
                           onClick={() => suspendUser.mutate({ id: u.id, suspended: !u.isSuspended })}
-                          className={cn('text-xs hover:underline', u.isSuspended ? 'text-win' : 'text-loss')}
+                          className={cn(u.isSuspended ? 'text-green' : 'text-red-hot', 'hover:underline')}
                         >
                           {u.isSuspended ? 'Unsuspend' : 'Suspend'}
                         </button>
@@ -171,24 +203,29 @@ export default function Admin() {
           </motion.div>
         )}
 
-        {/* Games */}
         {activeTab === 'games' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             {gamesQuery.isLoading ? (
-              <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="skeleton h-14" />)}</div>
-            ) : (
               <div className="space-y-2">
-                {gamesQuery.data?.rooms?.map(room => (
-                  <div key={room.id} className="card">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-sm">{room.name || 'Unnamed'}</span>
-                      <span className="text-xs text-txt-faint">{timeAgo(room.createdAt)}</span>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14" />
+                ))}
+              </div>
+            ) : (
+              <div className="divide-y divide-hairline">
+                {gamesQuery.data?.rooms?.map((room) => (
+                  <div key={room.id} className="py-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-ui text-[14px] text-bone">{room.name || 'Unnamed'}</span>
+                      <span className="font-mono text-[10px] text-bone-faint">{timeAgo(room.createdAt)}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-txt-muted font-mono">
-                      <span>{formatMoney(room.wagerCents)}/round</span>
+                    <div className="flex items-center gap-5 font-mono text-[11px] text-bone-dim">
+                      <span className="tabular-nums">{formatMoney(room.wagerCents)} ante</span>
                       <span>{room.rounds.length} rounds</span>
                       <span>{room.participants.length} players</span>
-                      <span>Rake: {formatMoney(room.rounds.reduce((s, r) => s + r.rakeCents, 0))}</span>
+                      <span>
+                        Rake {formatMoney(room.rounds.reduce((s, r) => s + r.rakeCents, 0))}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -197,25 +234,42 @@ export default function Admin() {
           </motion.div>
         )}
 
-        {/* Financials */}
         {activeTab === 'financials' && financialsQuery.data && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="grid md:grid-cols-2 gap-4">
               {[
-                { label: 'Total Deposits', value: financialsQuery.data.totalDepositsCents, color: 'text-win' },
-                { label: 'Total Withdrawals', value: financialsQuery.data.totalWithdrawalsCents, color: 'text-loss' },
-                { label: 'Total Rake Revenue', value: financialsQuery.data.totalRakeCents, color: 'text-gold-bright' },
-                { label: 'Total Float (user balances)', value: financialsQuery.data.totalFloatCents, color: 'text-txt-primary' },
-              ].map(stat => (
-                <div key={stat.label} className="card text-center py-8">
-                  <span className="text-xs font-mono text-txt-muted uppercase tracking-widest block mb-2">{stat.label}</span>
-                  <span className={cn('font-mono text-3xl font-bold', stat.color)}>{formatMoney(stat.value)}</span>
+                { label: 'Total Deposits', value: financialsQuery.data.totalDepositsCents, tone: 'text-green' },
+                { label: 'Total Withdrawals', value: financialsQuery.data.totalWithdrawalsCents, tone: 'text-red-hot' },
+                { label: 'Rake Revenue', value: financialsQuery.data.totalRakeCents, tone: 'text-gold-bright' },
+                { label: 'User Float', value: financialsQuery.data.totalFloatCents, tone: 'text-bone' },
+              ].map((s) => (
+                <div key={s.label} className="surface text-center py-10 px-6">
+                  <Eyebrow>{s.label}</Eyebrow>
+                  <div className={cn('font-mono text-3xl font-medium tabular-nums mt-3', s.tone)}>
+                    {formatMoney(s.value)}
+                  </div>
                 </div>
               ))}
             </div>
           </motion.div>
         )}
       </main>
+    </div>
+  );
+}
+
+function SmallStat({ label, value, sub, tone }) {
+  return (
+    <div className="surface p-5 text-center">
+      <Eyebrow>{label}</Eyebrow>
+      <div className={cn('font-mono text-xl font-medium tabular-nums mt-2', tone || 'text-bone')}>
+        {value}
+      </div>
+      {sub && (
+        <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-bone-faint mt-1">
+          {sub}
+        </div>
+      )}
     </div>
   );
 }

@@ -5,11 +5,10 @@ import { motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { formatMoney, cn, timeAgo } from '../lib/utils';
-import { Button, Input, Badge, Modal } from '../components/ui/index';
-import { toast } from '../components/ui/index';
+import { Eyebrow, Modal, Skeleton, toast } from '../components/ui/index';
 
 export default function Profile() {
-  const user = useAuthStore(s => s.user);
+  const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const [showExclusion, setShowExclusion] = useState(false);
   const [activeTab, setActiveTab] = useState('stats');
@@ -49,169 +48,238 @@ export default function Profile() {
   });
 
   const stats = statsQuery.data;
-  const tabs = ['stats', 'history', 'responsible'];
+  const tabs = [
+    { id: 'stats', label: 'Record' },
+    { id: 'history', label: 'History' },
+    { id: 'responsible', label: 'Responsible Play' },
+  ];
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-gold/5 px-6 py-3">
+    <div className="relative min-h-screen text-bone overflow-hidden">
+      <div className="overhead-cone" />
+
+      <header className="relative z-10 border-b border-hairline px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/lobby" className="text-txt-muted hover:text-gold transition-colors text-sm">&larr; Lobby</Link>
-            <span className="font-display text-xl text-gold">Profile</span>
+            <Link
+              to="/lobby"
+              className="font-mono text-[11px] tracking-[0.18em] uppercase text-bone-dim hover:text-gold-bright transition-colors"
+            >
+              ← Lobby
+            </Link>
+            <div className="w-px h-3.5 bg-hairline" />
+            <span className="font-display text-[18px] tracking-[0.04em] text-bone">Profile</span>
           </div>
-          <span className="font-mono text-sm text-txt-muted">{user?.username}</span>
+          <span className="font-mono text-[12px] text-bone-dim">@{user?.username}</span>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {/* Tabs */}
-        <div className="flex border-b border-gold/10 mb-8">
-          {tabs.map(t => (
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
+        <div className="flex gap-1 border-b border-hairline mb-10">
+          {tabs.map((t) => (
             <button
-              key={t}
-              onClick={() => setActiveTab(t)}
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
               className={cn(
-                'px-6 py-3 text-sm font-mono uppercase tracking-widest transition-all border-b-2 -mb-px',
-                activeTab === t ? 'border-gold text-gold' : 'border-transparent text-txt-muted hover:text-txt-primary'
+                'px-5 py-3 font-mono text-[11px] tracking-[0.18em] uppercase transition-all border-b -mb-px',
+                activeTab === t.id
+                  ? 'border-gold-bright text-gold-bright'
+                  : 'border-transparent text-bone-dim hover:text-bone'
               )}
             >
-              {t === 'responsible' ? 'Responsible Play' : t}
+              {t.label}
             </button>
           ))}
         </div>
 
-        {/* Stats tab */}
         {activeTab === 'stats' && stats && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Games', value: stats.totalGames },
+                { label: 'Hands', value: stats.totalGames },
                 { label: 'Win Rate', value: `${stats.winRate}%` },
-                { label: 'Net P&L', value: formatMoney(stats.netPLCents), color: stats.netPLCents >= 0 ? 'text-win' : 'text-loss' },
-                { label: 'Biggest Win', value: formatMoney(stats.biggestWinCents), color: 'text-gold-bright' },
-              ].map(stat => (
-                <div key={stat.label} className="card text-center">
-                  <span className="text-xs font-mono text-txt-muted uppercase tracking-widest block mb-1">{stat.label}</span>
-                  <span className={cn('font-mono text-2xl font-bold', stat.color || 'text-txt-primary')}>{stat.value}</span>
+                {
+                  label: 'Net',
+                  value: formatMoney(stats.netPLCents),
+                  tone: stats.netPLCents >= 0 ? 'text-green' : 'text-red-hot',
+                },
+                {
+                  label: 'Best Hand',
+                  value: formatMoney(stats.biggestWinCents),
+                  tone: 'text-gold-bright',
+                },
+              ].map((s) => (
+                <div key={s.label} className="surface p-5">
+                  <Eyebrow>{s.label}</Eyebrow>
+                  <div className={cn('font-mono text-2xl font-medium tabular-nums mt-2', s.tone || 'text-bone')}>
+                    {s.value}
+                  </div>
                 </div>
               ))}
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="card">
-                <span className="text-xs font-mono text-txt-muted uppercase tracking-widest block mb-1">Total Won</span>
-                <span className="font-mono text-xl text-win">{formatMoney(stats.totalWonCents)}</span>
+              <div className="surface p-5">
+                <Eyebrow>Total Won</Eyebrow>
+                <div className="font-mono text-xl text-green tabular-nums mt-2">
+                  {formatMoney(stats.totalWonCents)}
+                </div>
               </div>
-              <div className="card">
-                <span className="text-xs font-mono text-txt-muted uppercase tracking-widest block mb-1">Total Lost</span>
-                <span className="font-mono text-xl text-loss">{formatMoney(stats.totalLostCents)}</span>
+              <div className="surface p-5">
+                <Eyebrow>Total Lost</Eyebrow>
+                <div className="font-mono text-xl text-red-hot tabular-nums mt-2">
+                  {formatMoney(stats.totalLostCents)}
+                </div>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* History tab */}
         {activeTab === 'history' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             {historyQuery.isLoading ? (
-              <div className="space-y-3">{[...Array(5)].map((_, i) => <div key={i} className="skeleton h-14" />)}</div>
-            ) : !historyQuery.data?.games?.length ? (
-              <div className="card text-center py-12 text-txt-muted">No games played yet</div>
-            ) : (
               <div className="space-y-2">
-                {historyQuery.data.games.map((game, i) => (
-                  <div key={i} className="card flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm">{formatMoney(game.wagerCents)} ante</span>
-                      <span className="text-xs text-txt-faint">{game.rounds} round{game.rounds !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className={cn(
-                        'font-mono text-sm font-bold',
-                        game.totalWon - game.totalLost >= 0 ? 'text-win' : 'text-loss'
-                      )}>
-                        {game.totalWon - game.totalLost >= 0 ? '+' : ''}{formatMoney(game.totalWon - game.totalLost)}
-                      </span>
-                      <p className="text-xs text-txt-faint">{timeAgo(game.date)}</p>
-                    </div>
-                  </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14" />
                 ))}
+              </div>
+            ) : !historyQuery.data?.games?.length ? (
+              <div className="surface py-16 text-center">
+                <Eyebrow>No Hands Yet</Eyebrow>
+                <div className="font-display text-bone text-2xl mt-3">
+                  Sit down at your first table.
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-hairline">
+                {historyQuery.data.games.map((game, i) => {
+                  const net = game.totalWon - game.totalLost;
+                  const positive = net >= 0;
+                  return (
+                    <div key={i} className="flex items-center justify-between py-4">
+                      <div className="flex items-baseline gap-3">
+                        <span className="font-mono text-[14px] tabular-nums text-bone">
+                          {formatMoney(game.wagerCents)} ante
+                        </span>
+                        <span className="font-mono text-[10px] tracking-[0.14em] uppercase text-bone-faint">
+                          {game.rounds} hand{game.rounds === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div
+                          className={cn(
+                            'font-mono text-[14px] font-medium tabular-nums',
+                            positive ? 'text-green' : 'text-red-hot'
+                          )}
+                        >
+                          {positive ? '+' : ''}
+                          {formatMoney(net)}
+                        </div>
+                        <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-bone-faint">
+                          {timeAgo(game.date)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </motion.div>
         )}
 
-        {/* Responsible gambling tab */}
         {activeTab === 'responsible' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-            <div className="card space-y-6">
-              <h3 className="font-display text-lg text-gold">Deposit Limits</h3>
-              <p className="text-sm text-txt-muted">
-                Set a daily deposit limit. Decreases take effect immediately. Increases require a 24-hour cooling period.
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="surface p-7 space-y-5">
+              <div>
+                <Eyebrow>Deposit Limit</Eyebrow>
+                <h3 className="font-display text-2xl text-bone mt-1" style={{ letterSpacing: '-0.01em' }}>
+                  Cap what you deposit daily.
+                </h3>
+              </div>
+              <p className="font-ui text-[13px] text-bone-dim">
+                Decreases take effect immediately. Increases require a 24-hour cooling period.
               </p>
-              <div className="grid grid-cols-4 gap-2">
-                {[null, 5000, 10000, 25000].map(limit => (
-                  <button
-                    key={limit ?? 'none'}
-                    onClick={() => updateRG.mutate({ dailyDepositLimitCents: limit })}
-                    className={cn(
-                      'py-2 text-sm font-mono border transition-all',
-                      rgQuery.data?.dailyDepositLimitCents === limit
-                        ? 'border-gold bg-gold/10 text-gold'
-                        : 'border-gold/10 text-txt-muted hover:border-gold/30'
-                    )}
-                  >
-                    {limit ? formatMoney(limit) : 'None'}
-                  </button>
-                ))}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[null, 5000, 10000, 25000].map((limit) => {
+                  const active = rgQuery.data?.dailyDepositLimitCents === limit;
+                  return (
+                    <button
+                      key={limit ?? 'none'}
+                      onClick={() => updateRG.mutate({ dailyDepositLimitCents: limit })}
+                      className={cn(
+                        'py-2.5 text-[12px] font-mono tabular-nums border transition-all',
+                        active
+                          ? 'border-gold bg-gold/10 text-gold-bright'
+                          : 'border-hairline text-bone-dim hover:text-bone hover:border-hairline-hi'
+                      )}
+                    >
+                      {limit ? formatMoney(limit) : 'None'}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="card space-y-4">
-              <h3 className="font-display text-lg text-loss">Self-Exclusion</h3>
-              <p className="text-sm text-txt-muted">
-                Temporarily or permanently lock your account. This action logs you out immediately. Permanent exclusion cannot be reversed.
+            <div className="surface p-7 space-y-5 border-red-hot/30">
+              <div>
+                <Eyebrow className="!text-red-hot">Self-Exclude</Eyebrow>
+                <h3 className="font-display text-2xl text-bone mt-1" style={{ letterSpacing: '-0.01em' }}>
+                  Lock yourself out.
+                </h3>
+              </div>
+              <p className="font-ui text-[13px] text-bone-dim">
+                Temporarily or permanently freeze your account. You’ll be signed out immediately.
+                Permanent exclusion cannot be reversed.
               </p>
-              <Button variant="ghost" className="border-loss/30 text-loss hover:bg-loss/10" onClick={() => setShowExclusion(true)}>
+              <button
+                onClick={() => setShowExclusion(true)}
+                className="btn-ghost !border-red-hot/40 !text-red-hot hover:!bg-red-hot/10"
+              >
                 Activate Self-Exclusion
-              </Button>
+              </button>
             </div>
 
-            <div className="p-4 border border-gold/10 bg-surface text-sm text-txt-muted">
-              <p className="font-body font-semibold text-txt-primary mb-2">Need help?</p>
-              <p>National Council on Problem Gambling: 1-800-522-4700</p>
-              <p>GamCare: gamcare.org.uk</p>
-              <p>1-800-GAMBLER: 1-800-426-2537</p>
+            <div className="px-6 py-5 border border-hairline">
+              <Eyebrow>Help Lines</Eyebrow>
+              <ul className="mt-3 space-y-1.5 font-ui text-[13px] text-bone-dim">
+                <li>National Council on Problem Gambling: 1-800-522-4700</li>
+                <li>GamCare: gamcare.org.uk</li>
+                <li>1-800-GAMBLER: 1-800-426-2537</li>
+              </ul>
             </div>
           </motion.div>
         )}
       </main>
 
       <Modal isOpen={showExclusion} onClose={() => setShowExclusion(false)} title="Self-Exclusion">
-        <p className="text-sm text-txt-muted mb-6">
-          Choose an exclusion period. You will be logged out immediately and cannot access your account until the period expires.
+        <p className="font-ui text-[13px] text-bone-dim mb-6">
+          Choose a period. You’ll be signed out immediately and locked out until it expires.
         </p>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[
             { duration: '24h', label: '24 Hours' },
             { duration: '7d', label: '7 Days' },
             { duration: '30d', label: '30 Days' },
-            { duration: 'permanent', label: 'Permanent (irreversible)' },
-          ].map(opt => (
+            { duration: 'permanent', label: 'Permanent · irreversible' },
+          ].map((opt) => (
             <button
               key={opt.duration}
               onClick={() => {
-                if (opt.duration === 'permanent') {
-                  if (!confirm('PERMANENT self-exclusion cannot be reversed. Are you absolutely sure?')) return;
-                }
+                if (
+                  opt.duration === 'permanent' &&
+                  !confirm('Permanent self-exclusion cannot be reversed. Are you sure?')
+                )
+                  return;
                 selfExclude.mutate(opt.duration);
               }}
               className={cn(
-                'w-full p-3 text-left border transition-all hover:border-loss/30',
-                opt.duration === 'permanent' ? 'border-loss/20 text-loss' : 'border-gold/10 text-txt-primary'
+                'w-full px-4 py-3 text-left border font-mono text-[13px] transition-all',
+                opt.duration === 'permanent'
+                  ? 'border-red-hot/30 text-red-hot hover:bg-red-hot/5'
+                  : 'border-hairline text-bone hover:border-hairline-hi'
               )}
             >
-              <span className="font-mono">{opt.label}</span>
+              {opt.label}
             </button>
           ))}
         </div>
