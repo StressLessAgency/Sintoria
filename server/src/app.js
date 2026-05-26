@@ -26,22 +26,31 @@ export const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379'
 redis.on('error', (err) => console.error('Redis error:', err));
 redis.on('connect', () => console.log('Redis connected'));
 
+// CORS: allow CLIENT_URL (comma-separated list supported) + every *.vercel.app preview.
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const vercelPreviewRegex = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+
+const corsOrigin = (origin, cb) => {
+  if (!origin) return cb(null, true); // server-to-server / curl
+  if (allowedOrigins.includes(origin)) return cb(null, true);
+  if (vercelPreviewRegex.test(origin)) return cb(null, true);
+  return cb(new Error(`CORS blocked: ${origin}`));
+};
+
 // Socket.io
 const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-  },
+  cors: { origin: corsOrigin, credentials: true },
   pingTimeout: 60000,
   pingInterval: 25000,
 });
 
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-}));
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
 // Stripe webhooks need raw body — mount before json parser
