@@ -5,8 +5,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "cd server && npm ci && npx prisma generate",
+    "build": "cd server && npm install && npx prisma generate",
     "start": "cd server && npx prisma migrate deploy && node src/app.js",
-    "postinstall": "cd server && npm ci && npx prisma generate"
+    "postinstall": "cd server && npm install && npx prisma generate"
   }
 }
