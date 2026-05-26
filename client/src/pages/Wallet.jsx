@@ -13,13 +13,13 @@ export default function Wallet() {
   const { balance, transactions, isLoadingTransactions, deposit, withdraw, refetchBalance } =
     useWallet();
 
-  const handleDeposit = async (amountCents) => {
-    try {
-      await deposit.mutateAsync(amountCents);
-      toast(`Deposit initiated: ${formatMoney(amountCents)}. Complete via Stripe.`, 'success');
-    } catch (err) {
-      toast(err.response?.data?.error || 'Deposit failed', 'error');
-    }
+  const createPaymentIntent = async (amountCents) => {
+    return deposit.mutateAsync(amountCents);
+  };
+
+  const handleDepositSuccess = (amountCents) => {
+    toast(`Deposit confirmed: ${formatMoney(amountCents)}`, 'success');
+    refetchBalance();
   };
 
   const handleWithdraw = async (amountCents) => {
@@ -88,7 +88,10 @@ export default function Wallet() {
             </div>
 
             {tab === 'deposit' ? (
-              <DepositForm onDeposit={handleDeposit} isLoading={deposit.isPending} />
+              <DepositForm
+                createPaymentIntent={createPaymentIntent}
+                onSuccess={handleDepositSuccess}
+              />
             ) : (
               <WithdrawForm
                 balanceCents={balance}
