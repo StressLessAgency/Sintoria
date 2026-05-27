@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getSocket } from '../lib/socket';
+import { toast } from '../components/ui/index';
 
 export function useGame(roomId) {
   const {
@@ -38,6 +39,20 @@ export function useGame(roomId) {
     socket.on('game_over', (data) => setGameOver(data));
     socket.on('chat_message', (msg) => addChatMessage(msg));
 
+    const onError = (err) => {
+      const friendly = {
+        NOT_TABLE_LEADER: 'Only the table leader can deal.',
+        NOT_ENOUGH_READY: 'Need at least two ready players to deal.',
+        LEADER_NOT_SEATED: 'You must be seated to deal.',
+        HAND_IN_PROGRESS: 'A hand is already in progress.',
+        DEAL_FAILED: 'Could not start the hand. Try again.',
+      };
+      const code = err?.code;
+      if (code && friendly[code]) toast(friendly[code], 'error');
+      else if (err?.message) toast(err.message, 'error');
+    };
+    socket.on('error', onError);
+
     return () => {
       socket.off('room_state');
       socket.off('player_joined');
@@ -51,6 +66,7 @@ export function useGame(roomId) {
       socket.off('tie_replay');
       socket.off('game_over');
       socket.off('chat_message');
+      socket.off('error', onError);
       socket.emit('leave_room', { roomId });
     };
   }, [
@@ -87,6 +103,11 @@ export function useGame(roomId) {
     if (socket) socket.emit('ready_up', { roomId });
   }, [roomId]);
 
+  const deal = useCallback(() => {
+    const socket = getSocket();
+    if (socket) socket.emit('leader_deal', { roomId });
+  }, [roomId]);
+
   const sendChat = useCallback(
     (message) => {
       const socket = getSocket();
@@ -95,5 +116,5 @@ export function useGame(roomId) {
     [roomId]
   );
 
-  return { rollDice, setAside, readyUp, sendChat };
+  return { rollDice, setAside, readyUp, deal, sendChat };
 }

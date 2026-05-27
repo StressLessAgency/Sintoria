@@ -6,7 +6,6 @@ import {
 } from '../game/roomManager.js';
 import { getBalance } from '../services/ledger.js';
 import { prisma } from '../app.js';
-import { startGame } from './gameHandlers.js';
 
 export function setupRoomHandlers(io, socket) {
   socket.on('join_room', async ({ roomId }) => {
@@ -78,16 +77,13 @@ export function setupRoomHandlers(io, socket) {
 
   socket.on('ready_up', async ({ roomId }) => {
     try {
-      const { readyPlayers, allReady } = await setPlayerReady(roomId, socket.userId);
+      const { readyPlayers } = await setPlayerReady(roomId, socket.userId);
 
       io.to(`room:${roomId}`).emit('player_ready', {
         playerId: socket.userId,
         readyPlayers,
       });
-
-      if (allReady) {
-        await startGame(io, roomId);
-      }
+      // No auto-start. The table leader presses "Deal Hand".
     } catch (err) {
       socket.emit('error', { code: err.message, message: getErrorMessage(err.message) });
     }
@@ -121,6 +117,8 @@ async function buildRoomStatePayload(roomId) {
   return {
     roomId,
     room,
+    hostId: state.hostId,
+    tableLeaderId: state.tableLeaderId || state.hostId,
     players: state.players,
     readyPlayers: state.readyPlayers,
     status: state.status,

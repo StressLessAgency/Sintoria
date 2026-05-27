@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../app.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, tableLeaderMiddleware } from '../middleware/auth.js';
 import { exclusionMiddleware } from '../middleware/compliance.js';
 import { validateWager } from '../game/engine.js';
 import { createRoomState, getActiveRoomIds, getRoomState, getLiveStats } from '../game/roomManager.js';
@@ -45,6 +45,7 @@ router.get('/', authMiddleware, async (req, res) => {
       return {
         id: room.id,
         hostId: room.hostId,
+        tableLeaderId: room.tableLeaderId || room.hostId,
         name: room.name,
         wagerCents: room.wagerCents,
         maxPlayers: room.maxPlayers,
@@ -65,8 +66,8 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Create room
-router.post('/', authMiddleware, exclusionMiddleware, async (req, res) => {
+// Create room — only TABLE_LEADER or ADMIN may open a table.
+router.post('/', authMiddleware, tableLeaderMiddleware, exclusionMiddleware, async (req, res) => {
   try {
     const { wagerCents, maxPlayers = 6, name } = req.body;
 
@@ -94,13 +95,18 @@ router.post('/', authMiddleware, exclusionMiddleware, async (req, res) => {
     const room = await prisma.room.create({
       data: {
         hostId: req.userId,
+        tableLeaderId: req.userId,
         name: name || `${user.username}'s Table`,
         wagerCents,
         maxPlayers,
       },
     });
 
-    await createRoomState(room.id, req.userId, { wagerCents, maxPlayers });
+    await createRoomState(room.id, req.userId, {
+      wagerCents,
+      maxPlayers,
+      tableLeaderId: req.userId,
+    });
 
     res.status(201).json(room);
   } catch (err) {

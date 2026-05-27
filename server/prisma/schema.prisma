@@ -17,6 +17,7 @@ model User {
   isVerified          Boolean             @default(false)
   isSuspended         Boolean             @default(false)
   isAdmin             Boolean             @default(false)
+  role                Role                @default(PLAYER)
   avatarUrl           String?
   verifyToken         String?
   resetToken          String?
@@ -28,9 +29,17 @@ model User {
   transactions        Transaction[]
   gameParticipations  GameParticipant[]
   responsibleGambling ResponsibleGambling?
+  auditEvents         AdminAuditLog[]     @relation("AdminActor")
 
   @@index([email])
   @@index([username])
+  @@index([role])
+}
+
+enum Role {
+  PLAYER
+  TABLE_LEADER
+  ADMIN
 }
 
 enum KycStatus {
@@ -78,6 +87,7 @@ enum TransactionType {
 model Room {
   id            String            @id @default(cuid())
   hostId        String
+  tableLeaderId String?
   name          String            @default("Unnamed Table")
   wagerCents    Int
   maxPlayers    Int               @default(6)
@@ -91,6 +101,7 @@ model Room {
 
   @@index([status])
   @@index([hostId])
+  @@index([tableLeaderId])
 }
 
 enum GameMode {
@@ -128,6 +139,7 @@ model GameRound {
   rerolls     Json?
   scores      Json?
   losers      Json?
+  finalState  Json?
   potCents    Int       @default(0)
   rakeCents   Int       @default(0)
   status      String    @default("PENDING")
@@ -135,6 +147,7 @@ model GameRound {
   room        Room      @relation(fields: [roomId], references: [id])
 
   @@index([roomId])
+  @@index([completedAt])
 }
 
 model ResponsibleGambling {
@@ -145,4 +158,19 @@ model ResponsibleGambling {
   exclusionUntil         DateTime?
   lastLimitChangeAt      DateTime?
   user                   User      @relation(fields: [userId], references: [id])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  actor      User     @relation("AdminActor", fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
 }

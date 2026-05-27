@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAuthStore } from '../store/authStore';
 
 export function useAuth() {
@@ -8,5 +8,16 @@ export function useAuth() {
     fetchUser();
   }, [fetchUser]);
 
-  return { user, isAuthenticated, isLoading, login, register, logout };
+  const role = user?.role || (user?.isAdmin ? 'ADMIN' : 'PLAYER');
+
+  const flags = useMemo(
+    () => ({
+      isAdmin: role === 'ADMIN',
+      isTableLeader: role === 'TABLE_LEADER' || role === 'ADMIN',
+      isPlayer: role === 'PLAYER',
+    }),
+    [role]
+  );
+
+  return { user, isAuthenticated, isLoading, login, register, logout, role, ...flags };
 }

@@ -22,13 +22,61 @@ export function authMiddleware(req, res, next) {
   }
 }
 
+/**
+ * Loads the role from DB and attaches `req.user = { id, role }`. Use after
+ * authMiddleware on any route that needs role-based checks.
+ */
+export async function loadUserMiddleware(req, res, next) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true, role: true, isAdmin: true, isSuspended: true },
+    });
+    if (!user) return res.status(401).json({ error: 'User not found' });
+    req.user = user;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load user' });
+  }
+}
+
 export function adminMiddleware(req, res, next) {
   // Must be used after authMiddleware
-  prisma.user.findUnique({ where: { id: req.userId } })
-    .then(user => {
-      if (!user?.isAdmin) {
+  prisma.user
+    .findUnique({
+      where: { id: req.userId },
+      select: { id: true, role: true, isAdmin: true },
+    })
+    .then((user) => {
+      if (!user || (user.role !== 'ADMIN' && !user.isAdmin)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
+      req.user = user;
+      next();
+    })
+    .catch(() => res.status(500).json({ error: 'Auth check failed' }));
+}
+
+/**
+ * Allows TABLE_LEADER or ADMIN. Plain players (role=PLAYER) are rejected
+ * with 403. Use for endpoints like POST /rooms that should be host-gated.
+ */
+export function tableLeaderMiddleware(req, res, next) {
+  prisma.user
+    .findUnique({
+      where: { id: req.userId },
+      select: { id: true, role: true, isAdmin: true },
+    })
+    .then((user) => {
+      if (!user) return res.status(401).json({ error: 'User not found' });
+      const role = user.role || (user.isAdmin ? 'ADMIN' : 'PLAYER');
+      if (role !== 'TABLE_LEADER' && role !== 'ADMIN') {
+        return res.status(403).json({
+          error: 'Tables are dealt by hosts. Ask a table leader for a seat.',
+          code: 'LEADER_REQUIRED',
+        });
+      }
+      req.user = user;
       next();
     })
     .catch(() => res.status(500).json({ error: 'Auth check failed' }));

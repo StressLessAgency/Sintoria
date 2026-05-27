@@ -63,6 +63,9 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
+// Make socket.io accessible to routes that need to broadcast (e.g. admin force-end).
+app.set('io', io);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);

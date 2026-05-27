@@ -3,6 +3,8 @@ import { create } from 'zustand';
 export const useGameStore = create((set) => ({
   roomId: null,
   room: null,
+  hostId: null,
+  tableLeaderId: null,
   players: [],
   readyPlayers: [],
   status: 'WAITING',
@@ -21,6 +23,8 @@ export const useGameStore = create((set) => ({
     set({
       roomId,
       room: data.room,
+      hostId: data.hostId || null,
+      tableLeaderId: data.tableLeaderId || data.hostId || null,
       players: data.players || [],
       readyPlayers: data.readyPlayers || [],
       status: data.status || 'WAITING',
@@ -133,6 +137,21 @@ export const useGameStore = create((set) => ({
       gameOverData: data,
       phase: 'GAME_OVER',
       status: 'COMPLETED',
+    }),
+
+  // Wipe transient hand state so the leader's next "Deal Hand" starts clean.
+  resetForNextHand: () =>
+    set({
+      status: 'WAITING',
+      phase: 'WAITING',
+      readyPlayers: [],
+      turnOrder: [],
+      currentPlayerId: null,
+      playerState: {},
+      potCents: 0,
+      tieReplayPlayerIds: [],
+      roundResult: null,
+      gameOverData: null,
     }),
 
   addChatMessage: (msg) =>

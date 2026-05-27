@@ -23,6 +23,50 @@ import { checkSocketRateLimit } from '../middleware/rateLimit.js';
 import { prisma } from '../app.js';
 
 export function setupGameHandlers(io, socket) {
+  // Leader presses "Deal Hand" — gated start.
+  socket.on('leader_deal', async ({ roomId }) => {
+    try {
+      const state = await getRoomState(roomId);
+      if (!state) return socket.emit('error', { code: 'ROOM_NOT_FOUND' });
+
+      const leaderId = state.tableLeaderId || state.hostId;
+      if (socket.userId !== leaderId) {
+        return socket.emit('error', { code: 'NOT_TABLE_LEADER', message: 'Only the table leader can deal.' });
+      }
+
+      // Allow deal from WAITING (first hand) or COMPLETED (next hand).
+      if (state.status === 'IN_PROGRESS') {
+        return socket.emit('error', { code: 'HAND_IN_PROGRESS', message: 'A hand is already in progress.' });
+      }
+
+      // Leader must be seated.
+      const leaderSeated = state.players.some((p) => p.userId === leaderId);
+      if (!leaderSeated) {
+        return socket.emit('error', { code: 'LEADER_NOT_SEATED', message: 'Leader must be seated to deal.' });
+      }
+
+      // Need at least two ready players (the leader counts if ready).
+      const readyCount = state.readyPlayers.length;
+      if (readyCount < 2) {
+        return socket.emit('error', {
+          code: 'NOT_ENOUGH_READY',
+          message: 'Need at least two ready players to deal.',
+        });
+      }
+
+      // Trim players list to those who are ready so unready players sit out.
+      if (readyCount < state.players.length) {
+        const stayingPlayers = state.players.filter((p) => state.readyPlayers.includes(p.userId));
+        await updateRoomState(roomId, { players: stayingPlayers });
+      }
+
+      await startGame(io, roomId);
+    } catch (err) {
+      console.error('leader_deal error:', err);
+      socket.emit('error', { code: 'DEAL_FAILED', message: 'Failed to deal hand.' });
+    }
+  });
+
   socket.on('roll_dice', async ({ roomId }) => {
     try {
       const allowed = await checkSocketRateLimit(socket.userId, 'roll', 1, 1);
@@ -159,13 +203,14 @@ function nextActiveTurn(turnOrder, playerState, startIdx) {
 }
 
 /**
- * Called by roomHandlers when all players are ready. Debits wagers,
- * initializes player state, builds turn order, and broadcasts start.
+ * Called by the table leader's "Deal Hand" socket event. Debits wagers,
+ * initializes per-player state, builds turn order, broadcasts game_started.
+ * Accepts WAITING (first hand) or COMPLETED (next hand) state.
  */
 export async function startGame(io, roomId) {
   const state = await getRoomState(roomId);
   if (!state) return;
-  if (state.status !== 'WAITING') return;
+  if (state.status === 'IN_PROGRESS') return;
 
   const playerIds = state.players.map((p) => p.userId);
   const debited = [];
@@ -368,6 +413,29 @@ async function endGame(io, roomId, winnerId) {
     }
   }
 
+  // Persist a rich snapshot of every player's final state for the admin Games audit.
+  const finalState = {
+    winnerId,
+    winnerUsername: state.players.find((p) => p.userId === winnerId)?.username || null,
+    potCents: state.potCents,
+    payoutCents: payout.winnerCents,
+    rakeCents: payout.rakeCents,
+    players: state.turnOrder.map((id) => {
+      const ps = state.playerState[id] || {};
+      const player = state.players.find((p) => p.userId === id);
+      return {
+        userId: id,
+        username: player?.username || null,
+        setAside: ps.setAside || [],
+        rollsUsed: ps.rollsUsed || 0,
+        score: ps.score ?? null,
+        done: !!ps.done,
+        shotTheMoon: !!ps.shotTheMoon,
+        wasWinner: id === winnerId,
+      };
+    }),
+  };
+
   if (state.currentRoundId) {
     await prisma.gameRound.update({
       where: { id: state.currentRoundId },
@@ -377,6 +445,7 @@ async function endGame(io, roomId, winnerId) {
           Object.entries(state.playerState).map(([id, ps]) => [id, ps.score])
         ),
         losers: state.turnOrder.filter((id) => id !== winnerId),
+        finalState,
         potCents: state.potCents,
         rakeCents: payout.rakeCents,
         status: 'COMPLETED',
@@ -385,15 +454,22 @@ async function endGame(io, roomId, winnerId) {
     }).catch(() => {});
   }
 
+  // Reset the room back to WAITING so the leader can deal another hand.
   await prisma.room.update({
     where: { id: roomId },
-    data: { status: 'COMPLETED' },
+    data: { status: 'WAITING' },
   }).catch(() => {});
 
   await updateRoomState(roomId, {
-    status: 'COMPLETED',
-    phase: 'GAME_OVER',
+    status: 'WAITING',
+    phase: 'WAITING',
     lastWinnerId: winnerId || '',
+    readyPlayers: [],
+    turnOrder: [],
+    turnIndex: 0,
+    playerState: {},
+    potCents: 0,
+    tieReplayPlayerIds: [],
   });
 
   io.to(`room:${roomId}`).emit('game_over', {
@@ -402,12 +478,13 @@ async function endGame(io, roomId, winnerId) {
     potCents: state.potCents,
     rakeCents: payout.rakeCents,
     payoutCents: payout.winnerCents,
+    finalState,
   });
 
   for (const player of state.players) {
     const balance = await getBalance(player.userId);
     io.to(`user:${player.userId}`).emit('wallet_updated', { newBalanceCents: balance });
   }
-
-  setTimeout(() => deleteRoomState(roomId), 60000);
+  // Room stays alive so the leader can deal the next hand. It will expire
+  // via Redis TTL or be cancelled when the last player leaves.
 }

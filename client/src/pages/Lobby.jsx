@@ -8,6 +8,7 @@ import { Button, Eyebrow, toast } from '../components/ui/index';
 import { BalanceDisplay } from '../components/wallet/index';
 import { RoomCard, RoomFilters, CreateRoomModal } from '../components/lobby/index';
 import { useWallet } from '../hooks/useWallet';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Lobby() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function Lobby() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { balance } = useWallet();
+  const { isTableLeader, isAdmin } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [filters, setFilters] = useState({ minWager: null, maxWager: null });
 
@@ -68,7 +70,7 @@ export default function Lobby() {
               <Link to="/profile" className="text-bone-dim hover:text-gold-bright transition-colors">
                 Profile
               </Link>
-              {user?.isAdmin && (
+              {isAdmin && (
                 <Link to="/admin" className="text-bone-dim hover:text-gold-bright transition-colors">
                   Admin
                 </Link>
@@ -100,9 +102,15 @@ export default function Lobby() {
               {waitingRooms.length} waiting
             </p>
           </div>
-          <Button onClick={() => setShowCreate(true)} size="md">
-            New Table
-          </Button>
+          {isTableLeader ? (
+            <Button onClick={() => setShowCreate(true)} size="md">
+              New Table
+            </Button>
+          ) : (
+            <div className="font-mono text-[10px] tracking-[0.28em] uppercase text-bone-faint text-right max-w-[200px] leading-relaxed">
+              Tables run by hosts<br />ask a leader for a seat
+            </div>
+          )}
         </div>
 
         <div className="mb-8 border-t border-hairline pt-5">
@@ -134,12 +142,16 @@ export default function Lobby() {
                 className="font-display text-bone mt-3 mb-3"
                 style={{ fontSize: 36, lineHeight: 1, letterSpacing: '-0.01em' }}
               >
-                Nobody dealing yet.
+                {isTableLeader ? 'Nobody dealing yet.' : 'No tables open.'}
               </h3>
               <p className="font-ui text-[14px] text-bone-dim mb-6 max-w-sm mx-auto">
-                Open a table at the ante you want and pull in the rest of the room.
+                {isTableLeader
+                  ? 'Open a table at the ante you want and pull in the rest of the room.'
+                  : 'Sit tight. A host will open one shortly.'}
               </p>
-              <Button onClick={() => setShowCreate(true)}>Open the First Table</Button>
+              {isTableLeader && (
+                <Button onClick={() => setShowCreate(true)}>Open the First Table</Button>
+              )}
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

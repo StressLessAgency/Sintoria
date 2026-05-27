@@ -27,6 +27,7 @@ export async function createRoomState(roomId, hostId, config) {
   const state = {
     roomId,
     hostId,
+    tableLeaderId: config.tableLeaderId || hostId,
     wagerCents: config.wagerCents,
     maxPlayers: config.maxPlayers,
     status: 'WAITING',
@@ -66,6 +67,7 @@ export async function getRoomState(roomId) {
     playerState: JSON.parse(state.playerState || '{}'),
     tieReplayPlayerIds: JSON.parse(state.tieReplayPlayerIds || '[]'),
     lastWinnerId: state.lastWinnerId || null,
+    tableLeaderId: state.tableLeaderId || state.hostId || null,
   };
 }
 
@@ -173,4 +175,35 @@ export async function getLiveStats() {
     totalPlayers,
     totalInPlayCents: totalInPlay,
   };
+}
+
+/**
+ * For admin Tables view. Returns full Redis state for every active room,
+ * shape-massaged into something the admin UI can render directly.
+ */
+export async function getAllActiveRoomStates() {
+  const roomIds = await getActiveRoomIds();
+  const states = await Promise.all(
+    roomIds.map(async (id) => {
+      const state = await getRoomState(id);
+      if (!state) return null;
+      return {
+        id,
+        hostId: state.hostId,
+        tableLeaderId: state.tableLeaderId || state.hostId,
+        status: state.status,
+        phase: state.phase,
+        wagerCents: state.wagerCents,
+        maxPlayers: state.maxPlayers,
+        players: state.players,
+        readyPlayers: state.readyPlayers,
+        potCents: state.potCents || state.wagerCents * state.players.length,
+        currentRound: state.currentRound,
+        turnOrder: state.turnOrder,
+        currentPlayerId: state.turnOrder?.[state.turnIndex] || null,
+        createdAt: Number(state.createdAt) || Date.now(),
+      };
+    })
+  );
+  return states.filter(Boolean);
 }

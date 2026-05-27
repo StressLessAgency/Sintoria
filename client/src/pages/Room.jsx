@@ -28,10 +28,16 @@ export default function Room() {
     playerState,
     potCents,
     tieReplayPlayerIds,
+    tableLeaderId,
     gameOverData,
+    resetForNextHand,
   } = useGameStore();
 
-  const { rollDice, setAside, readyUp } = useGame(roomId);
+  const { rollDice, setAside, readyUp, deal } = useGame(roomId);
+  const isLeader = tableLeaderId && tableLeaderId === userId;
+  const leaderSeated = players.some((p) => p.userId === tableLeaderId);
+  const readyCount = readyPlayers.length;
+  const canDeal = isLeader && readyCount >= 2 && leaderSeated;
   const [picked, setPicked] = useState([]);
   const [isRolling, setIsRolling] = useState(false);
 
@@ -150,6 +156,7 @@ export default function Room() {
                 player={p}
                 state={playerState[p.userId]}
                 isMe={p.userId === userId}
+                isLeader={p.userId === tableLeaderId}
                 isCurrentTurn={
                   p.userId === currentPlayerId && status === 'IN_PROGRESS'
                 }
@@ -170,6 +177,10 @@ export default function Room() {
               count={players.length}
               readyCount={readyPlayers.length}
               onReady={readyUp}
+              isLeader={isLeader}
+              canDeal={canDeal}
+              onDeal={deal}
+              leaderSeated={leaderSeated}
             />
           )}
           {status === 'IN_PROGRESS' && amInTieReplay && (
@@ -195,7 +206,12 @@ export default function Room() {
           <GameOver
             data={gameOverData}
             userId={userId}
+            isLeader={isLeader}
             onLeave={() => navigate('/lobby')}
+            onNextHand={() => {
+              resetForNextHand();
+              // The leader still needs everyone to ready up again first.
+            }}
           />
         )}
       </AnimatePresence>
@@ -207,6 +223,7 @@ function PlayerRow({
   player,
   state,
   isMe,
+  isLeader,
   isCurrentTurn,
   isReady,
   outOfTie,
@@ -263,6 +280,7 @@ function PlayerRow({
             {player.username}
             {isMe && <span className="text-bone-dim font-normal"> · you</span>}
           </span>
+          {isLeader && <Badge variant="gold">Leader</Badge>}
           {isCurrentTurn && <Badge variant="gold">Turn</Badge>}
           {moon && <Badge variant="gold">Moon</Badge>}
           {done && !moon && <Badge>Done</Badge>}
@@ -288,28 +306,54 @@ function PlayerRow({
   );
 }
 
-function WaitingPanel({ isReady, count, readyCount, onReady }) {
+function WaitingPanel({
+  isReady,
+  count,
+  readyCount,
+  onReady,
+  isLeader,
+  canDeal,
+  onDeal,
+  leaderSeated,
+}) {
+  // Compose three lines:
+  // - eyebrow says what state you're in
+  // - headline tells you the next action
+  // - subline gives count context
+  let eyebrow = isReady ? 'Standing By' : 'When you’re ready';
+  let headline;
+  if (count < 2) headline = 'Waiting for the table to fill';
+  else if (!isReady) headline = 'Ante up and ready up';
+  else if (isLeader) headline = canDeal ? 'Deal when you’re ready' : `Need ${Math.max(0, 2 - readyCount)} more ready`;
+  else headline = 'Waiting on the leader to deal';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="surface px-6 py-5 flex items-center justify-between"
+      className="surface px-6 py-5 flex items-center justify-between gap-4"
     >
-      <div>
-        <Eyebrow>{isReady ? 'Standing By' : 'When you’re ready'}</Eyebrow>
+      <div className="min-w-0">
+        <Eyebrow>{eyebrow}</Eyebrow>
         <div className="font-display text-bone text-2xl mt-1" style={{ letterSpacing: '-0.01em' }}>
-          {isReady
-            ? `Waiting on ${Math.max(0, count - readyCount)} more`
-            : count < 2
-              ? 'Waiting for the table to fill'
-              : 'Ante up and play'}
+          {headline}
+        </div>
+        <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-bone-faint mt-2">
+          {readyCount}/{count} ready{isLeader && !leaderSeated && ' · leader unseated'}
         </div>
       </div>
-      {!isReady && (
-        <Button onClick={onReady} pulse size="lg">
-          Ready
-        </Button>
-      )}
+      <div className="flex items-center gap-3 shrink-0">
+        {!isReady && (
+          <Button onClick={onReady} variant={isLeader ? 'ghost' : 'primary'} pulse={!isLeader} size="lg">
+            Ready
+          </Button>
+        )}
+        {isLeader && (
+          <Button onClick={onDeal} disabled={!canDeal} pulse={canDeal} size="lg">
+            Deal Hand
+          </Button>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -413,8 +457,9 @@ function ActionPanel({
   );
 }
 
-function GameOver({ data, userId, onLeave }) {
+function GameOver({ data, userId, onLeave, onNextHand, isLeader }) {
   const youWon = data.winnerId === userId;
+  const forced = data.forcedByAdmin;
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -430,7 +475,7 @@ function GameOver({ data, userId, onLeave }) {
       >
         <div className="absolute inset-x-0 -top-20 h-40 bg-[radial-gradient(ellipse_at_50%_100%,rgba(255,208,106,0.18),transparent_70%)] pointer-events-none" />
 
-        <Eyebrow>{youWon ? 'Won' : 'Hand Over'}</Eyebrow>
+        <Eyebrow>{forced ? 'Ended' : youWon ? 'Won' : 'Hand Over'}</Eyebrow>
         <h2
           className="font-display mt-3 mb-1"
           style={{
@@ -440,10 +485,12 @@ function GameOver({ data, userId, onLeave }) {
             letterSpacing: '-0.02em',
           }}
         >
-          {youWon ? 'YOU TAKE IT' : 'NEXT TIME'}
+          {forced ? 'TABLE CLOSED' : youWon ? 'YOU TAKE IT' : 'NEXT TIME'}
         </h2>
         <p className="font-ui text-[14px] text-bone-dim mt-2">
-          {data.winnerUsername || '—'} {youWon ? 'walks with' : 'takes'} the pot
+          {forced
+            ? 'A house admin ended this table. Antes have been refunded.'
+            : `${data.winnerUsername || '—'} ${youWon ? 'walks with' : 'takes'} the pot`}
         </p>
 
         <div className="my-8">
@@ -455,9 +502,16 @@ function GameOver({ data, userId, onLeave }) {
           </div>
         </div>
 
-        <Button onClick={onLeave} size="lg" className="w-full">
-          Back to Lobby
-        </Button>
+        <div className="flex flex-col gap-2">
+          {!forced && (
+            <Button onClick={onNextHand} size="lg" className="w-full">
+              {isLeader ? 'Stay for Next Hand' : 'Stay at Table'}
+            </Button>
+          )}
+          <Button onClick={onLeave} variant="ghost" size="lg" className="w-full">
+            Back to Lobby
+          </Button>
+        </div>
       </motion.div>
     </motion.div>
   );

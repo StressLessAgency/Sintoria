@@ -51,6 +51,7 @@ async function main() {
       dateOfBirth: new Date('1988-01-01'),
       isVerified: true,
       isAdmin: true,
+      role: 'ADMIN',
       kycStatus: 'APPROVED',
       wallet: { create: { balanceCents: 100000 } }, // $1000
       responsibleGambling: { create: {} },
