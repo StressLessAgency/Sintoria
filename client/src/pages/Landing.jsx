@@ -1,56 +1,67 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 
 export default function Landing() {
-  const containerRef = useRef(null);
   const [ready, setReady] = useState(false);
-
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { damping: 28, stiffness: 90, mass: 0.6 });
-  const sy = useSpring(my, { damping: 28, stiffness: 90, mass: 0.6 });
-  const heroX = useTransform(sx, (v) => v * -14);
-  const heroY = useTransform(sy, (v) => v * -10);
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 80);
     return () => clearTimeout(t);
   }, []);
 
-  const handleMove = (e) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    mx.set(x);
-    my.set(y);
-  };
-
   return (
-    <div
-      ref={containerRef}
-      onMouseMove={handleMove}
-      className="relative w-screen h-screen overflow-hidden bg-bg"
-    >
+    <div className="relative w-screen h-screen overflow-hidden bg-black">
       <motion.div
-        initial={{ scale: 1.08, opacity: 0 }}
-        animate={{ scale: 1.04, opacity: ready ? 1 : 0 }}
-        transition={{ duration: 2.4, ease: [0.2, 0.7, 0.2, 1] }}
-        style={{ x: heroX, y: heroY }}
-        className="absolute inset-0 will-change-transform"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: ready ? 1 : 0 }}
+        transition={{ duration: 2.6, ease: [0.2, 0.7, 0.2, 1] }}
+        className="absolute inset-0"
       >
-        <img
-          src="/hero-dice.jpg"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-          draggable={false}
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_55%,transparent_30%,rgba(0,0,0,0.55)_85%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,6,10,0.55)_0%,transparent_30%,transparent_60%,rgba(7,6,10,0.78)_100%)]" />
+        <ShaderGradientCanvas
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+          pixelDensity={1}
+        >
+          <ShaderGradient
+            animate="on"
+            type="waterPlane"
+            shader="defaults"
+            bgColor1="#000000"
+            bgColor2="#000000"
+            color1="#fff082"
+            color2="#ff9142"
+            color3="#ffffff"
+            brightness={0.4}
+            envPreset="city"
+            lightType="env"
+            reflection={0.1}
+            cAzimuthAngle={-168}
+            cDistance={3.89}
+            cPolarAngle={65}
+            cameraZoom={1}
+            fov={40}
+            positionX={0}
+            positionY={0.9}
+            positionZ={-0.3}
+            rotationX={45}
+            rotationY={0}
+            rotationZ={0}
+            uAmplitude={0}
+            uDensity={1.2}
+            uFrequency={0}
+            uSpeed={0.2}
+            uStrength={3.4}
+            uTime={0}
+            grain="off"
+            wireframe={false}
+          />
+        </ShaderGradientCanvas>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_60%,transparent_25%,rgba(0,0,0,0.55)_85%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.5)_0%,transparent_30%,transparent_55%,rgba(0,0,0,0.7)_100%)] pointer-events-none" />
       </motion.div>
 
-      <div className="absolute inset-0 grain opacity-60 pointer-events-none" />
+      <div className="absolute inset-0 grain opacity-50 pointer-events-none" />
 
       <header className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-8 py-6">
         <motion.div
@@ -71,7 +82,7 @@ export default function Landing() {
         </motion.div>
       </header>
 
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none px-6">
         <motion.h1
           initial={{ opacity: 0, y: 24, letterSpacing: '0.02em' }}
           animate={{
@@ -80,12 +91,12 @@ export default function Landing() {
             letterSpacing: '-0.05em',
           }}
           transition={{ duration: 2.2, delay: 0.9, ease: [0.2, 0.7, 0.2, 1] }}
-          className="font-display text-bone select-none"
+          className="font-display text-bone select-none text-center"
           style={{
             fontSize: 'clamp(120px, 22vw, 320px)',
             lineHeight: 0.85,
             fontWeight: 400,
-            textShadow: '0 18px 60px rgba(0,0,0,0.45)',
+            textShadow: '0 18px 60px rgba(0,0,0,0.55)',
           }}
         >
           THR<span className="font-display-italic text-gold-bright">3</span>ES
