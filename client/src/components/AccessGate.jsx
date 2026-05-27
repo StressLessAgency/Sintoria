@@ -1,33 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const STORAGE_KEY = 'threes_access_v1';
 const REQUIRED_CODE = (import.meta.env.VITE_ACCESS_CODE || '').trim();
 
-function isUnlocked() {
-  if (!REQUIRED_CODE) return true;
-  try {
-    return localStorage.getItem(STORAGE_KEY) === REQUIRED_CODE;
-  } catch {
-    return false;
-  }
-}
-
 export default function AccessGate({ children }) {
-  const [unlocked, setUnlocked] = useState(() => isUnlocked());
+  const [unlocked, setUnlocked] = useState(() => !REQUIRED_CODE);
 
   if (unlocked) return children;
 
-  return (
-    <LockScreen
-      onUnlock={() => {
-        try {
-          localStorage.setItem(STORAGE_KEY, REQUIRED_CODE);
-        } catch {}
-        setUnlocked(true);
-      }}
-    />
-  );
+  return <LockScreen onUnlock={() => setUnlocked(true)} />;
 }
 
 function LockScreen({ onUnlock }) {
