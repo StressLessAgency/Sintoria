@@ -19,6 +19,8 @@ function LockScreen({ onUnlock }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
+    const isTouch = matchMedia('(hover: none)').matches;
+    if (isTouch) return;
     const t = setTimeout(() => inputRef.current?.focus(), 1600);
     return () => clearTimeout(t);
   }, []);
@@ -41,7 +43,14 @@ function LockScreen({ onUnlock }) {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-bg text-bone flex items-center justify-center px-6">
+    <div
+      className="relative overflow-hidden bg-bg text-bone flex items-center justify-center px-5 sm:px-6"
+      style={{
+        minHeight: '100dvh',
+        paddingTop: 'max(env(safe-area-inset-top), 1.5rem)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 4rem)',
+      }}
+    >
       <div className="overhead-cone cone-warmup" />
       <div className="felt-pool" />
       <div className="absolute inset-0 vignette pointer-events-none" />
@@ -53,14 +62,14 @@ function LockScreen({ onUnlock }) {
         transition={{ duration: 1.2, delay: 0.4, ease: [0.2, 0.7, 0.2, 1] }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="text-center mb-12">
+        <div className="text-center mb-10 sm:mb-12">
           <motion.div
             initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.6, delay: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
             className="font-display gold-text inline-block"
             style={{
-              fontSize: 'clamp(96px, 14vw, 160px)',
+              fontSize: 'clamp(80px, 22vw, 160px)',
               lineHeight: 0.92,
               fontWeight: 400,
               letterSpacing: '-0.04em',
@@ -68,7 +77,7 @@ function LockScreen({ onUnlock }) {
           >
             <span className="font-display-italic">3</span>
           </motion.div>
-          <div className="font-mono text-[10px] tracking-[0.32em] uppercase text-bone-dim mt-4">
+          <div className="font-mono text-[9px] sm:text-[10px] tracking-[0.28em] sm:tracking-[0.32em] uppercase text-bone-dim mt-3 sm:mt-4">
             Invite Only
           </div>
         </div>
@@ -90,15 +99,18 @@ function LockScreen({ onUnlock }) {
             <input
               ref={inputRef}
               type="password"
+              inputMode="text"
               value={value}
               onChange={(e) => {
                 setValue(e.target.value);
                 if (error) setError(false);
               }}
               autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
               spellCheck={false}
               disabled={submitting}
-              className="w-full bg-transparent border-0 border-b text-bone font-display text-[28px] tracking-[0.04em] py-3 outline-none transition-colors disabled:opacity-50"
+              className="w-full bg-transparent border-0 border-b text-bone font-display text-[22px] sm:text-[28px] tracking-[0.04em] py-3 pr-24 outline-none transition-colors disabled:opacity-50"
               style={{
                 borderBottomColor: error
                   ? 'var(--red-hot)'
@@ -138,7 +150,10 @@ function LockScreen({ onUnlock }) {
         </motion.form>
       </motion.div>
 
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 font-mono text-[9px] tracking-[0.22em] uppercase text-bone-faint/70">
+      <div
+        className="absolute left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] tracking-[0.22em] uppercase text-bone-faint/70 text-center whitespace-nowrap"
+        style={{ bottom: 'max(env(safe-area-inset-bottom), 1.5rem)' }}
+      >
         threes — for those who already know
       </div>
     </div>
