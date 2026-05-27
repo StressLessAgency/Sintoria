@@ -57,8 +57,8 @@ export default function Landing() {
             wireframe={false}
           />
         </ShaderGradientCanvas>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_60%,transparent_25%,rgba(0,0,0,0.55)_85%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.5)_0%,transparent_30%,transparent_55%,rgba(0,0,0,0.7)_100%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_50%,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.45)_45%,transparent_75%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.55)_0%,transparent_25%,transparent_60%,rgba(0,0,0,0.78)_100%)] pointer-events-none" />
       </motion.div>
 
       <div className="absolute inset-0 grain opacity-50 pointer-events-none" />
@@ -91,15 +91,17 @@ export default function Landing() {
             letterSpacing: '-0.05em',
           }}
           transition={{ duration: 2.2, delay: 0.9, ease: [0.2, 0.7, 0.2, 1] }}
-          className="font-display text-bone select-none text-center"
+          className="font-display select-none text-center"
           style={{
             fontSize: 'clamp(120px, 22vw, 320px)',
             lineHeight: 0.85,
-            fontWeight: 400,
-            textShadow: '0 18px 60px rgba(0,0,0,0.55)',
+            fontWeight: 500,
+            color: '#F5ECD4',
+            textShadow:
+              '0 0 1px rgba(0,0,0,0.85), 0 2px 0 rgba(0,0,0,0.55), 0 24px 60px rgba(0,0,0,0.75), 0 0 120px rgba(0,0,0,0.5)',
           }}
         >
-          THR<span className="font-display-italic text-gold-bright">3</span>ES
+          THR<span className="font-display-italic" style={{ color: '#FFE08A', textShadow: '0 0 24px rgba(255,208,106,0.55), 0 2px 0 rgba(0,0,0,0.7), 0 24px 60px rgba(0,0,0,0.75)' }}>3</span>ES
         </motion.h1>
       </div>
 
