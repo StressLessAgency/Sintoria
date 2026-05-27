@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useSocket } from './hooks/useSocket';
 import { ToastContainer } from './components/ui/index';
+import AccessGate from './components/AccessGate';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -53,6 +54,7 @@ export default function App() {
   useSocket();
 
   return (
+    <AccessGate>
     <Layout>
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -67,5 +69,6 @@ export default function App() {
       </Routes>
       <ToastContainer />
     </Layout>
+    </AccessGate>
   );
 }
