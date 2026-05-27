@@ -4,27 +4,21 @@ export function cn(...inputs) {
   return clsx(inputs);
 }
 
-/**
- * Format cents as USD with dollar sign, commas, 2 decimal places.
- * e.g. 125050 => "$1,250.50"
- */
-export function formatMoney(cents) {
-  if (cents == null) return '$0.00';
-  const dollars = Math.abs(cents) / 100;
-  const formatted = dollars.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return cents < 0 ? `-$${formatted}` : `$${formatted}`;
+// Chips are integer units stored server-side in Wallet.balanceCents (1:1).
+// Display as comma-grouped numbers without a currency symbol.
+export function formatChips(amount) {
+  if (amount == null) return '0';
+  const n = Math.abs(amount).toLocaleString('en-US');
+  return amount < 0 ? `-${n}` : n;
 }
 
-/**
- * Get wager tier badge class.
- */
-export function getWagerTier(cents) {
-  if (cents < 100) return { label: 'MICRO', class: 'badge-micro' };
-  if (cents <= 500) return { label: 'LOW', class: 'badge-low' };
-  if (cents <= 2000) return { label: 'MID', class: 'badge-mid' };
+// Back-compat alias for callsites not yet renamed.
+export const formatMoney = formatChips;
+
+export function getWagerTier(chips) {
+  if (chips < 100) return { label: 'MICRO', class: 'badge-micro' };
+  if (chips <= 500) return { label: 'LOW', class: 'badge-low' };
+  if (chips <= 2000) return { label: 'MID', class: 'badge-mid' };
   return { label: 'HIGH', class: 'badge-high' };
 }
 

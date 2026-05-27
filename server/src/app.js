@@ -12,7 +12,6 @@ import authRoutes from './routes/auth.js';
 import walletRoutes from './routes/wallet.js';
 import roomRoutes from './routes/rooms.js';
 import profileRoutes from './routes/profile.js';
-import webhookRoutes from './routes/webhooks.js';
 import adminRoutes from './routes/admin.js';
 import { setupSocketServer } from './socket/index.js';
 
@@ -52,9 +51,6 @@ const io = new Server(httpServer, {
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
-
-// Stripe webhooks need raw body — mount before json parser
-app.use('/api/webhooks', webhookRoutes);
 
 app.use(express.json({ limit: '10mb' }));
 

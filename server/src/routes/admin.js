@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../app.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import { getLiveStats } from '../game/roomManager.js';
+import { creditGrant } from '../services/ledger.js';
 
 const router = Router();
 router.use(authMiddleware, adminMiddleware);
@@ -103,6 +104,25 @@ router.put('/users/:id/suspend', async (req, res) => {
     res.json({ id: user.id, isSuspended: user.isSuspended });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Grant chips to a user
+router.post('/users/:id/grant', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const amountChips = parseInt(amount, 10);
+    if (!Number.isFinite(amountChips) || amountChips <= 0 || amountChips > 1_000_000) {
+      return res.status(400).json({ error: 'amount must be a positive integer up to 1,000,000' });
+    }
+    const wallet = await creditGrant(req.params.id, amountChips, `admin_${req.userId}`);
+    res.json({ userId: req.params.id, granted: amountChips, balanceCents: wallet.balanceCents });
+  } catch (err) {
+    if (err.message === 'WALLET_NOT_FOUND') {
+      return res.status(404).json({ error: 'User wallet not found' });
+    }
+    console.error('Grant error:', err);
+    res.status(500).json({ error: 'Grant failed' });
   }
 });
 

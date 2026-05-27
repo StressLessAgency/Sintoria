@@ -6,6 +6,9 @@ import { authMiddleware, generateAccessToken, generateRefreshToken, verifyRefres
 import { authLimiter } from '../middleware/rateLimit.js';
 import { validateAge, checkSelfExclusion } from '../middleware/compliance.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/email.js';
+import { creditGrant } from '../services/ledger.js';
+
+const WELCOME_CHIPS = parseInt(process.env.WELCOME_CHIPS || '5000', 10);
 
 const router = Router();
 
@@ -60,7 +63,17 @@ router.post('/register', authLimiter, async (req, res) => {
       },
     });
 
-    await sendVerificationEmail(email, username, verifyToken);
+    if (WELCOME_CHIPS > 0) {
+      try {
+        await creditGrant(user.id, WELCOME_CHIPS, 'welcome');
+      } catch (err) {
+        console.error('Welcome grant failed:', err);
+      }
+    }
+
+    sendVerificationEmail(email, username, verifyToken).catch((err) =>
+      console.error('Verification email failed:', err)
+    );
 
     res.status(201).json({
       message: 'Account created. Check your email to verify.',

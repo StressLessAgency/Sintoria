@@ -67,21 +67,15 @@ export async function creditPayout(userId, amountCents, roundId) {
   });
 }
 
-export async function creditDeposit(userId, amountCents, stripePaymentIntentId) {
-  // Idempotency: check if we already processed this payment
-  const existing = await prisma.transaction.findFirst({
-    where: { reference: stripePaymentIntentId, type: 'DEPOSIT' },
-  });
-  if (existing) return null; // Already processed
-
+export async function creditGrant(userId, amountChips, source = 'manual') {
+  const reference = `grant_${source}_${Date.now()}`;
   return prisma.$transaction(async (tx) => {
     const wallet = await tx.$queryRaw`
       SELECT * FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
     `;
-
     if (!wallet[0]) throw new Error('WALLET_NOT_FOUND');
 
-    const newBalance = wallet[0].balanceCents + amountCents;
+    const newBalance = wallet[0].balanceCents + amountChips;
 
     const updatedWallet = await tx.wallet.update({
       where: { userId },
@@ -92,9 +86,10 @@ export async function creditDeposit(userId, amountCents, stripePaymentIntentId) 
       data: {
         userId,
         type: 'DEPOSIT',
-        amountCents,
+        amountCents: amountChips,
         balanceCents: newBalance,
-        reference: stripePaymentIntentId,
+        reference,
+        metadata: { kind: 'GRANT', source },
       },
     });
 

@@ -1,36 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useWallet } from '../hooks/useWallet';
 import { useAuthStore } from '../store/authStore';
-import { formatMoney, cn } from '../lib/utils';
-import { Eyebrow, toast } from '../components/ui/index';
-import { BalanceDisplay, DepositForm, WithdrawForm, TxHistory } from '../components/wallet/index';
+import { Eyebrow } from '../components/ui/index';
+import { BalanceDisplay, ChipsPanel, TxHistory } from '../components/wallet/index';
 
 export default function Wallet() {
-  const [tab, setTab] = useState('deposit');
   const user = useAuthStore((s) => s.user);
-  const { balance, transactions, isLoadingTransactions, deposit, withdraw, refetchBalance } =
-    useWallet();
-
-  const createPaymentIntent = async (amountCents) => {
-    return deposit.mutateAsync(amountCents);
-  };
-
-  const handleDepositSuccess = (amountCents) => {
-    toast(`Deposit confirmed: ${formatMoney(amountCents)}`, 'success');
-    refetchBalance();
-  };
-
-  const handleWithdraw = async (amountCents) => {
-    try {
-      await withdraw.mutateAsync(amountCents);
-      toast(`Withdrawal of ${formatMoney(amountCents)} initiated`, 'success');
-      refetchBalance();
-    } catch (err) {
-      toast(err.response?.data?.error || 'Withdrawal failed', 'error');
-    }
-  };
+  const { balance, transactions, isLoadingTransactions } = useWallet();
 
   return (
     <div className="relative min-h-screen text-bone overflow-hidden">
@@ -46,7 +24,7 @@ export default function Wallet() {
               ← Lobby
             </Link>
             <div className="w-px h-3.5 bg-hairline" />
-            <span className="font-display text-[18px] tracking-[0.04em] text-bone">Wallet</span>
+            <span className="font-display text-[18px] tracking-[0.04em] text-bone">Chips</span>
           </div>
           <BalanceDisplay balanceCents={balance} compact />
         </div>
@@ -57,50 +35,9 @@ export default function Wallet() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
-          className="text-center py-10 mb-10"
+          className="grid lg:grid-cols-2 gap-6"
         >
-          <Eyebrow>Balance</Eyebrow>
-          <div
-            className="font-display gold-text mt-2"
-            style={{ fontSize: 'clamp(56px, 8vw, 96px)', lineHeight: 1, letterSpacing: '-0.02em' }}
-          >
-            {formatMoney(balance)}
-          </div>
-        </motion.div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="surface p-7">
-            <div className="flex border-b border-hairline mb-7 -mt-2">
-              {['deposit', 'withdraw'].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    'flex-1 py-3 font-mono text-[11px] tracking-[0.18em] uppercase transition-all border-b -mb-px',
-                    tab === t
-                      ? 'border-gold-bright text-gold-bright'
-                      : 'border-transparent text-bone-dim hover:text-bone'
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'deposit' ? (
-              <DepositForm
-                createPaymentIntent={createPaymentIntent}
-                onSuccess={handleDepositSuccess}
-              />
-            ) : (
-              <WithdrawForm
-                balanceCents={balance}
-                onWithdraw={handleWithdraw}
-                isLoading={withdraw.isPending}
-                kycStatus={user?.kycStatus}
-              />
-            )}
-          </div>
+          <ChipsPanel balanceCents={balance} username={user?.username} />
 
           <div className="surface p-7">
             <Eyebrow>History</Eyebrow>
@@ -108,10 +45,10 @@ export default function Wallet() {
               <TxHistory transactions={transactions} isLoading={isLoadingTransactions} />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         <p className="mt-10 px-6 py-4 border border-hairline text-center font-mono text-[10px] tracking-[0.16em] uppercase text-bone-faint">
-          Deposits and withdrawals process via Stripe · Withdrawals require KYC · Play responsibly
+          Chips have no cash value · For tracking who's up, who's down · Play with friends
         </p>
       </main>
     </div>
