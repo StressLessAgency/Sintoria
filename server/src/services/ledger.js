@@ -2,9 +2,12 @@ import { prisma } from '../app.js';
 
 /**
  * All money operations use Prisma interactive transactions
- * with SELECT FOR UPDATE to prevent race conditions.
- * Balances are ALWAYS integer cents. No floating point.
+ * with SELECT FOR UPDATE on the wallet row to prevent race conditions.
+ * Balances are integer chips (column kept as `balanceCents` for back-compat;
+ * one "cent" here equals one chip — chips have no cash value).
  */
+
+export const HOUSE_USER_ID = 'house';
 
 export async function debitWager(userId, amountCents, roomId) {
   return prisma.$transaction(async (tx) => {
@@ -40,6 +43,14 @@ export async function debitWager(userId, amountCents, roomId) {
 
 export async function creditPayout(userId, amountCents, roundId) {
   return prisma.$transaction(async (tx) => {
+    // Idempotency: if a PAYOUT for this round already exists, do nothing.
+    if (roundId) {
+      const existing = await tx.transaction.findFirst({
+        where: { type: 'PAYOUT', reference: roundId, userId },
+      });
+      if (existing) return { skipped: true, balanceCents: existing.balanceCents };
+    }
+
     const wallet = await tx.$queryRaw`
       SELECT * FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
     `;
@@ -129,13 +140,14 @@ export async function debitWithdrawal(userId, amountCents, stripePayoutId) {
 }
 
 export async function recordRake(amountCents, roundId) {
-  // Rake goes to the house — use a system userId
+  // Rake goes to the seeded 'house' system user so the FK on
+  // Transaction.userId holds. House wallet isn't tracked separately.
   await prisma.transaction.create({
     data: {
-      userId: 'HOUSE',
+      userId: HOUSE_USER_ID,
       type: 'RAKE',
       amountCents,
-      balanceCents: 0, // house balance tracked separately
+      balanceCents: 0,
       reference: roundId,
     },
   });

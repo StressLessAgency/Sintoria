@@ -18,7 +18,7 @@ import {
   buildTurnOrder,
   allPlayersDone,
 } from '../game/roomManager.js';
-import { creditPayout, debitWager, recordRake, getBalance } from '../services/ledger.js';
+import { creditPayout, debitWager, refundWager, recordRake, getBalance } from '../services/ledger.js';
 import { checkSocketRateLimit } from '../middleware/rateLimit.js';
 import { prisma } from '../app.js';
 
@@ -222,9 +222,9 @@ export async function startGame(io, roomId) {
     } catch (err) {
       for (const refundId of debited) {
         try {
-          await debitWager(refundId, -state.wagerCents, roomId);
-        } catch {
-          // best-effort refund
+          await refundWager(refundId, state.wagerCents, roomId);
+        } catch (refundErr) {
+          console.error('Refund failed during startGame rollback:', refundId, refundErr);
         }
       }
       io.to(`room:${roomId}`).emit('game_start_failed', {
@@ -323,19 +323,32 @@ async function startTieReplay(io, roomId, tiedIds) {
 
   let extraPot = 0;
   const stillIn = [];
+  const dropped = [];
   for (const id of tiedIds) {
     try {
       await debitWager(id, state.wagerCents, roomId);
       extraPot += state.wagerCents;
       stillIn.push(id);
     } catch (err) {
+      dropped.push(id);
+      // Refund the original ante from this hand so a tied player who can't
+      // re-ante isn't penalized twice.
+      try {
+        await refundWager(id, state.wagerCents, roomId);
+      } catch (refundErr) {
+        console.error('Tie-replay refund failed for', id, refundErr);
+      }
       io.to(`room:${roomId}`).emit('tie_replay_drop', { playerId: id, reason: 'INSUFFICIENT_FUNDS' });
     }
   }
 
+  // Refunded antes leave the pot — pull that amount out before continuing.
+  const refundedFromPot = dropped.length * state.wagerCents;
+  const newPot = state.potCents + extraPot - refundedFromPot;
+
   if (stillIn.length <= 1) {
+    await updateRoomState(roomId, { potCents: newPot });
     if (stillIn.length === 1) {
-      await updateRoomState(roomId, { potCents: state.potCents + extraPot });
       await endGame(io, roomId, stillIn[0]);
     } else {
       await endGame(io, roomId, null);
@@ -366,13 +379,13 @@ async function startTieReplay(io, roomId, tiedIds) {
     playerState,
     turnOrder,
     turnIndex: 0,
-    potCents: state.potCents + extraPot,
+    potCents: newPot,
     tieReplayPlayerIds: stillIn,
   });
 
   io.to(`room:${roomId}`).emit('tie_replay', {
     tiedPlayerIds: stillIn,
-    newPotCents: state.potCents + extraPot,
+    newPotCents: newPot,
     currentPlayerId: turnOrder[0],
   });
 
@@ -385,12 +398,17 @@ async function startTieReplay(io, roomId, tiedIds) {
 async function endGame(io, roomId, winnerId) {
   const state = await getRoomState(roomId);
   if (!state) return;
+  // Idempotency guard: a hand whose payout already ran should never re-run.
+  // The room flips back to WAITING after a clean endGame, so the only way
+  // we'd re-enter while still IN_PROGRESS is a duplicate trigger — block it.
+  if (state.status === 'COMPLETED') return;
 
   const payout = calculatePayout(state.potCents);
+  let payoutResult = null;
 
   if (winnerId) {
     try {
-      await creditPayout(winnerId, payout.winnerCents, state.currentRoundId);
+      payoutResult = await creditPayout(winnerId, payout.winnerCents, state.currentRoundId);
       await prisma.gameParticipant.updateMany({
         where: { roomId, userId: winnerId },
         data: { totalWon: { increment: payout.winnerCents - state.wagerCents } },
@@ -400,8 +418,14 @@ async function endGame(io, roomId, winnerId) {
     }
   }
 
-  if (payout.rakeCents > 0 && winnerId) {
-    await recordRake(payout.rakeCents, state.currentRoundId);
+  // Only record rake on a fresh payout. creditPayout returns { skipped: true }
+  // when the same roundId was already paid out (e.g. duplicate endGame call).
+  if (payout.rakeCents > 0 && winnerId && payoutResult && !payoutResult.skipped) {
+    try {
+      await recordRake(payout.rakeCents, state.currentRoundId);
+    } catch (err) {
+      console.error('Rake record failed:', err);
+    }
   }
 
   for (const player of state.players) {
