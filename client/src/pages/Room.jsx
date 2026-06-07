@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 import { useGame } from '../hooks/useGame';
+import { useShakeToRoll } from '../hooks/useShakeToRoll';
 import { formatMoney, cn } from '../lib/utils';
 import { Button, Badge, Eyebrow } from '../components/ui/index';
 import { Die, LockedRow, ScoreDisplay } from '../components/dice/index';
@@ -56,6 +57,19 @@ export default function Room() {
     rollDice();
     setTimeout(() => setIsRolling(false), 700);
   };
+
+  const canShakeRoll =
+    isMyTurn &&
+    !isRolling &&
+    status === 'IN_PROGRESS' &&
+    !myState?.currentRoll &&
+    (myState?.rollsUsed ?? 0) < MAX_ROLLS &&
+    (myState?.setAside?.length ?? 0) < HAND_SIZE;
+
+  const shake = useShakeToRoll({
+    enabled: canShakeRoll,
+    onShake: handleRoll,
+  });
 
   const handleConfirm = () => {
     if (!isMyTurn || picked.length < 1) return;
@@ -193,6 +207,7 @@ export default function Room() {
               onRoll={handleRoll}
               onConfirm={handleConfirm}
               isRolling={isRolling}
+              shake={shake}
             />
           )}
           {status === 'IN_PROGRESS' && !amInTieReplay && (
@@ -378,12 +393,15 @@ function ActionPanel({
   onRoll,
   onConfirm,
   isRolling,
+  shake,
 }) {
   const currentRoll = myState?.currentRoll;
   const setAsideCount = myState?.setAside?.length ?? 0;
   const rollsUsed = myState?.rollsUsed ?? 0;
   const canRoll = isMyTurn && !currentRoll && setAsideCount < HAND_SIZE && rollsUsed < MAX_ROLLS;
   const canConfirm = isMyTurn && currentRoll && picked.length > 0;
+  const shakeActive = canRoll && shake?.permissionState === 'granted' && shake?.supported;
+  const showShakePrompt = canRoll && shake?.needsPermission;
 
   if (!isMyTurn) {
     return (
@@ -453,6 +471,22 @@ function ActionPanel({
           </Button>
         )}
       </div>
+
+      {showShakePrompt && (
+        <button
+          type="button"
+          onClick={shake.requestPermission}
+          className="mt-4 w-full font-mono text-[10px] tracking-[0.18em] uppercase text-gold-bright/90 hover:text-gold-bright border border-hairline-hi py-2.5"
+        >
+          Tap to enable shake-to-roll
+        </button>
+      )}
+      {shakeActive && (
+        <div className="mt-4 flex items-center justify-center gap-2 font-mono text-[10px] tracking-[0.18em] uppercase text-bone-dim">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-gold-bright animate-pulse" />
+          Shake to roll
+        </div>
+      )}
     </motion.div>
   );
 }

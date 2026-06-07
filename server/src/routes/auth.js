@@ -71,13 +71,25 @@ router.post('/register', authLimiter, async (req, res) => {
       }
     }
 
-    sendVerificationEmail(email, username, verifyToken).catch((err) =>
-      console.error('Verification email failed:', err)
-    );
+    const delivery = await sendVerificationEmail(email, username, verifyToken);
+    let autoVerified = false;
+    if (!delivery.sent) {
+      console.warn(
+        `Verification email not sent (${delivery.reason}); auto-verifying ${email}`
+      );
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true, verifyToken: null },
+      });
+      autoVerified = true;
+    }
 
     res.status(201).json({
-      message: 'Account created. Check your email to verify.',
+      message: autoVerified
+        ? 'Account created. You can sign in immediately.'
+        : 'Account created. Check your email to verify.',
       userId: user.id,
+      autoVerified,
     });
   } catch (err) {
     console.error('Register error:', err);
