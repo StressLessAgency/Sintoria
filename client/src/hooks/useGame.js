@@ -14,6 +14,7 @@ export function useGame(roomId) {
     applyDiceSetAside,
     setCurrentPlayer,
     applyTieReplay,
+    applyForfeit,
     setRoundResult,
     setGameOver,
     addChatMessage,
@@ -36,6 +37,13 @@ export function useGame(roomId) {
     socket.on('turn_changed', ({ currentPlayerId }) => setCurrentPlayer(currentPlayerId));
     socket.on('round_result', (data) => setRoundResult(data));
     socket.on('tie_replay', (data) => applyTieReplay(data));
+    socket.on('player_forfeited', ({ playerId, username }) => {
+      applyForfeit(playerId);
+      if (username) toast(`${username} forfeited the hand`, 'warning');
+    });
+    socket.on('player_disconnected', () => {
+      // Seat is held during the grace window; no state change needed.
+    });
     socket.on('game_over', (data) => setGameOver(data));
     socket.on('chat_message', (msg) => addChatMessage(msg));
 
@@ -64,6 +72,8 @@ export function useGame(roomId) {
       socket.off('turn_changed');
       socket.off('round_result');
       socket.off('tie_replay');
+      socket.off('player_forfeited');
+      socket.off('player_disconnected');
       socket.off('game_over');
       socket.off('chat_message');
       socket.off('error', onError);
@@ -80,6 +90,7 @@ export function useGame(roomId) {
     applyDiceSetAside,
     setCurrentPlayer,
     applyTieReplay,
+    applyForfeit,
     setRoundResult,
     setGameOver,
     addChatMessage,

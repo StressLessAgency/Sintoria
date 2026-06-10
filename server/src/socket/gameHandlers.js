@@ -202,6 +202,85 @@ function nextActiveTurn(turnOrder, playerState, startIdx) {
   return startIdx;
 }
 
+// A forfeited player can never win lowest-total: max legitimate score is 30 (5×6).
+const FORFEIT_SCORE = 999;
+const DISCONNECT_GRACE_MS = parseInt(process.env.DISCONNECT_GRACE_MS || '30000', 10);
+
+// In-memory grace timers keyed by `${roomId}:${userId}`. Single-instance only —
+// if the server ever scales horizontally these need to move to Redis.
+const pendingForfeits = new Map();
+
+export function scheduleForfeit(io, roomId, userId) {
+  const key = `${roomId}:${userId}`;
+  cancelForfeit(roomId, userId);
+  const timer = setTimeout(() => {
+    pendingForfeits.delete(key);
+    forfeitPlayer(io, roomId, userId).catch((err) =>
+      console.error('Scheduled forfeit failed:', roomId, userId, err)
+    );
+  }, DISCONNECT_GRACE_MS);
+  pendingForfeits.set(key, timer);
+}
+
+export function cancelForfeit(roomId, userId) {
+  const key = `${roomId}:${userId}`;
+  const timer = pendingForfeits.get(key);
+  if (timer) {
+    clearTimeout(timer);
+    pendingForfeits.delete(key);
+  }
+}
+
+/**
+ * Player abandons a hand in progress (explicit leave, or disconnect grace
+ * expired). Their ante stays in the pot; they're marked done with a score
+ * that can never win. If the hand can't continue (≤1 non-forfeited player
+ * left), it ends immediately with the survivor taking the pot.
+ */
+export async function forfeitPlayer(io, roomId, userId) {
+  const state = await getRoomState(roomId);
+  if (!state || state.status !== 'IN_PROGRESS') return;
+
+  const activeIds =
+    state.tieReplayPlayerIds.length > 0 ? state.tieReplayPlayerIds : state.turnOrder;
+  if (!activeIds.includes(userId)) return;
+
+  const ps = state.playerState[userId];
+  if (!ps || ps.done) return;
+
+  const playerState = {
+    ...state.playerState,
+    [userId]: { ...ps, currentRoll: null, done: true, forfeited: true, score: FORFEIT_SCORE },
+  };
+
+  const wasTheirTurn = state.turnOrder[state.turnIndex] === userId;
+  let turnIndex = state.turnIndex;
+  if (wasTheirTurn) {
+    turnIndex = nextActiveTurn(state.turnOrder, playerState, state.turnIndex);
+  }
+
+  await updateRoomState(roomId, { playerState, turnIndex });
+
+  io.to(`room:${roomId}`).emit('player_forfeited', {
+    playerId: userId,
+    username: state.players.find((p) => p.userId === userId)?.username,
+  });
+
+  const stillCompeting = activeIds.filter((id) => !playerState[id]?.forfeited);
+  if (stillCompeting.length <= 1) {
+    await endGame(io, roomId, stillCompeting[0] || null);
+    return;
+  }
+
+  if (allPlayersDone(state.turnOrder, playerState)) {
+    await resolveGame(io, roomId);
+  } else if (wasTheirTurn) {
+    io.to(`room:${roomId}`).emit('turn_changed', {
+      currentPlayerId: state.turnOrder[turnIndex],
+    });
+  }
+}
+
 /**
  * Called by the table leader's "Deal Hand" socket event. Debits wagers,
  * initializes per-player state, builds turn order, broadcasts game_started.
