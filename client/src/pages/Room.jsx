@@ -245,16 +245,17 @@ function PlayerRow({
   showReady,
 }) {
   const setAside = state?.setAside || [];
-  const score = state?.score ?? null;
   const rollsUsed = state?.rollsUsed ?? 0;
   const done = state?.done;
   const moon = state?.shotTheMoon;
+  const forfeited = state?.forfeited;
+  const score = forfeited ? null : state?.score ?? null;
 
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: outOfTie ? 0.3 : 1, y: 0 }}
+      animate={{ opacity: outOfTie || forfeited ? 0.3 : 1, y: 0 }}
       transition={{ type: 'spring', damping: 22, stiffness: 240 }}
       className={cn(
         'relative grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-5 py-4 surface',
@@ -298,7 +299,8 @@ function PlayerRow({
           {isLeader && <Badge variant="gold">Leader</Badge>}
           {isCurrentTurn && <Badge variant="gold">Turn</Badge>}
           {moon && <Badge variant="gold">Moon</Badge>}
-          {done && !moon && <Badge>Done</Badge>}
+          {forfeited && <Badge variant="danger">Forfeit</Badge>}
+          {done && !moon && !forfeited && <Badge>Done</Badge>}
           {showReady && isReady && <Badge variant="success">Ready</Badge>}
         </div>
         <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-bone-faint mt-1">

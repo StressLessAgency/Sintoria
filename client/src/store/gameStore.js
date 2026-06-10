@@ -107,6 +107,17 @@ export const useGameStore = create((set) => ({
 
   setCurrentPlayer: (currentPlayerId) => set({ currentPlayerId }),
 
+  applyForfeit: (playerId) =>
+    set((s) => {
+      const prev = s.playerState[playerId] || {};
+      return {
+        playerState: {
+          ...s.playerState,
+          [playerId]: { ...prev, currentRoll: null, done: true, forfeited: true },
+        },
+      };
+    }),
+
   applyTieReplay: ({ tiedPlayerIds, newPotCents, currentPlayerId }) =>
     set((s) => {
       const playerState = { ...s.playerState };

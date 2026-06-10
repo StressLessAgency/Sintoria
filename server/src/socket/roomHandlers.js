@@ -4,6 +4,7 @@ import {
   removePlayerFromRoom,
   setPlayerReady,
 } from '../game/roomManager.js';
+import { forfeitPlayer, scheduleForfeit, cancelForfeit } from './gameHandlers.js';
 import { getBalance } from '../services/ledger.js';
 import { prisma } from '../app.js';
 
@@ -16,6 +17,8 @@ export function setupRoomHandlers(io, socket) {
       }
 
       if (state.players.find((p) => p.userId === socket.userId)) {
+        // Rejoin — cancel any pending disconnect-forfeit and resync state.
+        cancelForfeit(roomId, socket.userId);
         socket.join(`room:${roomId}`);
         socket.currentRoomId = roomId;
         socket.emit('room_state', await buildRoomStatePayload(roomId));
@@ -58,6 +61,12 @@ export function setupRoomHandlers(io, socket) {
       const state = await getRoomState(roomId);
       if (!state) return;
 
+      // Walking out mid-hand is an immediate forfeit — ante stays in the pot.
+      cancelForfeit(roomId, socket.userId);
+      if (state.status === 'IN_PROGRESS') {
+        await forfeitPlayer(io, roomId, socket.userId);
+      }
+
       await removePlayerFromRoom(roomId, socket.userId);
       socket.leave(`room:${roomId}`);
       socket.currentRoomId = null;
@@ -90,14 +99,19 @@ export function setupRoomHandlers(io, socket) {
   });
 
   socket.on('disconnect', async () => {
-    if (socket.currentRoomId) {
-      const state = await getRoomState(socket.currentRoomId);
-      if (state && state.status === 'WAITING') {
-        await removePlayerFromRoom(socket.currentRoomId, socket.userId);
-        io.to(`room:${socket.currentRoomId}`).emit('player_left', {
-          playerId: socket.userId,
-        });
-      }
+    if (!socket.currentRoomId) return;
+    const roomId = socket.currentRoomId;
+    const state = await getRoomState(roomId);
+    if (!state) return;
+
+    if (state.status === 'WAITING') {
+      await removePlayerFromRoom(roomId, socket.userId);
+      io.to(`room:${roomId}`).emit('player_left', { playerId: socket.userId });
+    } else if (state.status === 'IN_PROGRESS') {
+      // Network blip ≠ ragequit: keep the seat and start a grace timer.
+      // Rejoining within the window cancels the forfeit.
+      scheduleForfeit(io, roomId, socket.userId);
+      io.to(`room:${roomId}`).emit('player_disconnected', { playerId: socket.userId });
     }
   });
 }
