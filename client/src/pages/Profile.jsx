@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { formatMoney, cn, timeAgo } from '../lib/utils';
-import { Eyebrow, Modal, Skeleton, toast } from '../components/ui/index';
+import { Button, Eyebrow, Input, Modal, Skeleton, toast } from '../components/ui/index';
 
 export default function Profile() {
   const user = useAuthStore((s) => s.user);
@@ -47,10 +47,17 @@ export default function Profile() {
     },
   });
 
+  const changePassword = useMutation({
+    mutationFn: async ({ currentPassword, newPassword, confirmPassword }) =>
+      (await api.post('/auth/change-password', { currentPassword, newPassword, confirmPassword })).data,
+    onError: (err) => toast(err.response?.data?.error || 'Failed to change password', 'error'),
+  });
+
   const stats = statsQuery.data;
   const tabs = [
     { id: 'stats', label: 'Record' },
     { id: 'history', label: 'History' },
+    { id: 'security', label: 'Security' },
     { id: 'responsible', label: 'Responsible Play' },
   ];
 
@@ -187,6 +194,22 @@ export default function Profile() {
           </motion.div>
         )}
 
+        {activeTab === 'security' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-md">
+            <ChangePasswordForm
+              loading={changePassword.isPending}
+              onSubmit={(values, reset) =>
+                changePassword.mutate(values, {
+                  onSuccess: () => {
+                    toast('Password changed', 'success');
+                    reset();
+                  },
+                })
+              }
+            />
+          </motion.div>
+        )}
+
         {activeTab === 'responsible' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             <div className="surface p-7 space-y-5">
@@ -284,6 +307,94 @@ export default function Profile() {
           ))}
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function ChangePasswordForm({ loading, onSubmit }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState(null);
+
+  const reset = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setLocalError(null);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setLocalError(null);
+    if (!currentPassword || !newPassword) {
+      setLocalError('Both fields are required');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setLocalError('New password must be at least 8 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setLocalError('New passwords don’t match');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setLocalError('New password must differ from current');
+      return;
+    }
+    onSubmit({ currentPassword, newPassword, confirmPassword }, reset);
+  };
+
+  return (
+    <div className="surface p-7 space-y-6">
+      <div>
+        <Eyebrow>Change Password</Eyebrow>
+        <h3 className="font-display text-2xl text-bone mt-1" style={{ letterSpacing: '-0.01em' }}>
+          Pick something new.
+        </h3>
+        <p className="font-ui text-[13px] text-bone-dim mt-2">
+          Minimum eight characters. Other sessions will be signed out.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Current password"
+          type="password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+        />
+        <Input
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
+        <Input
+          label="Confirm new password"
+          type="password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+
+        {localError && (
+          <p className="font-mono text-[11px] text-red-hot">{localError}</p>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          loading={loading}
+          disabled={loading}
+        >
+          Update Password
+        </Button>
+      </form>
     </div>
   );
 }

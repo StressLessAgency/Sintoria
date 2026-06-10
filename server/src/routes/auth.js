@@ -285,6 +285,47 @@ router.post('/reset-password', authLimiter, async (req, res) => {
   }
 });
 
+// Change password (authenticated)
+router.post('/change-password', authMiddleware, authLimiter, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ error: 'New password must differ from current password' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    // Invalidate every existing refresh token by clearing the stored hash.
+    // Other sessions on this account will need to re-log-in. The current
+    // session keeps working until its short-lived access token expires.
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, refreshToken: null },
+    });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 // Resend verification
 router.post('/resend-verification', authLimiter, async (req, res) => {
   try {
