@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
+import { playClack } from '../../lib/sounds';
 
 const PIPS = {
   1: [[1, 1]],
@@ -10,6 +11,8 @@ const PIPS = {
   5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
   6: [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
 };
+
+const TUMBLE_MS = 360;
 
 export function Die({
   value,
@@ -21,28 +24,42 @@ export function Die({
   onClick,
 }) {
   const [face, setFace] = useState(value ?? 1);
-  const [tumbling, setTumbling] = useState(false);
+  // Animation phases drive the visual timeline:
+  //   'idle'    — at rest on the felt
+  //   'flight'  — visible above the table, tumbling, face shuffling
+  //   'impact'  — landed; hard shadow snapped in, clack already played
+  // Stagger between dice comes from the `delay` prop.
+  const [phase, setPhase] = useState('idle');
   const intRef = useRef(null);
-  const timeoutRef = useRef(null);
+  const flightTimer = useRef(null);
+  const impactTimer = useRef(null);
 
   useEffect(() => {
     if (rolling) {
-      setTumbling(true);
+      setPhase('flight');
       intRef.current = setInterval(() => setFace(1 + Math.floor(Math.random() * 6)), 55);
-      timeoutRef.current = setTimeout(() => {
+      impactTimer.current = setTimeout(() => {
         clearInterval(intRef.current);
         setFace(value ?? 1);
-        setTumbling(false);
-      }, 600 + delay + Math.random() * 200);
+        setPhase('impact');
+        const v = value ?? 1;
+        // 3s ring a touch brighter; otherwise pitch wanders per-die so a row
+        // of 5 sounds like dice, not a snare roll.
+        playClack({ pitch: v === 3 ? 940 : 620 + Math.random() * 260 });
+        flightTimer.current = setTimeout(() => setPhase('idle'), 220);
+      }, delay + TUMBLE_MS);
       return () => {
         clearInterval(intRef.current);
-        clearTimeout(timeoutRef.current);
+        clearTimeout(impactTimer.current);
+        clearTimeout(flightTimer.current);
       };
     }
     setFace(value ?? 1);
-    setTumbling(false);
+    setPhase('idle');
   }, [rolling, value, delay]);
 
+  const tumbling = phase === 'flight';
+  const justLanded = phase === 'impact';
   const isThree = face === 3 && !tumbling;
   const pips = PIPS[face] || [];
   const r = Math.max(4, size * 0.16);
@@ -50,25 +67,41 @@ export function Die({
 
   const interactive = !!onClick && !locked;
 
+  // Resting y offset (selected dice lift). In flight we want the die to feel
+  // dropped from above the table and slam down. On impact, a brief overshoot
+  // sells the weight.
+  const restY = selected ? -10 : 0;
+  const animateY = tumbling ? -56 : justLanded ? restY + 3 : restY;
+  const animateScale = tumbling ? 0.86 : justLanded ? 1.04 : isThree ? 0.92 : 1;
+  const animateRotate = tumbling ? [0, 60, -42, 18, 0] : 0;
+  const shadowOpacity = tumbling ? 0 : isThree ? 0.28 : selected ? 0.75 : 0.6;
+  const shadowScale = tumbling ? 0.55 : justLanded ? 1.05 : 1;
+
   return (
     <motion.button
       type="button"
       onClick={interactive ? onClick : undefined}
       disabled={!interactive}
-      initial={{ opacity: 0, y: 16, scale: 0.7 }}
+      initial={{ opacity: 0, y: -40, scale: 0.7 }}
       animate={{
         opacity: 1,
-        y: selected ? -10 : 0,
-        scale: isThree ? 0.92 : 1,
-        rotate: tumbling ? [0, 14, -10, 6, 0] : 0,
+        y: animateY,
+        scale: animateScale,
+        rotate: animateRotate,
       }}
       transition={{
-        opacity: { duration: 0.3, delay: delay / 1000 },
-        y: { type: 'spring', damping: 16, stiffness: 220, delay: delay / 1000 },
-        scale: { type: 'spring', damping: 14 },
-        rotate: { duration: 0.42, delay: delay / 1000 },
+        opacity: { duration: 0.18, delay: delay / 1000 },
+        y: tumbling
+          ? { duration: TUMBLE_MS / 1000, ease: [0.55, 0.05, 0.45, 1], delay: delay / 1000 }
+          : { type: 'spring', damping: 12, stiffness: 480, mass: 0.6 },
+        scale: tumbling
+          ? { duration: TUMBLE_MS / 1000, delay: delay / 1000 }
+          : { type: 'spring', damping: 14, stiffness: 420 },
+        rotate: tumbling
+          ? { duration: TUMBLE_MS / 1000, ease: 'easeOut', delay: delay / 1000 }
+          : { duration: 0.18 },
       }}
-      whileHover={interactive ? { y: -6 } : undefined}
+      whileHover={interactive ? { y: restY - 6 } : undefined}
       whileTap={interactive ? { scale: 0.96 } : undefined}
       style={{ width: size, height: size }}
       className={cn(
@@ -78,8 +111,13 @@ export function Die({
       )}
       aria-label={`Die showing ${face}${selected ? ', selected' : ''}${locked ? ', locked' : ''}`}
     >
-      <div
+      <motion.div
         aria-hidden
+        animate={{ opacity: shadowOpacity, scaleX: shadowScale }}
+        transition={{
+          opacity: { duration: justLanded ? 0.08 : 0.2 },
+          scaleX: { duration: 0.18 },
+        }}
         style={{
           position: 'absolute',
           bottom: -4,
@@ -89,8 +127,7 @@ export function Die({
           background: 'rgba(0,0,0,0.55)',
           borderRadius: '50%',
           filter: 'blur(5px)',
-          opacity: isThree ? 0.28 : selected ? 0.75 : 0.6,
-          transition: 'opacity 200ms',
+          transformOrigin: 'center',
         }}
       />
 

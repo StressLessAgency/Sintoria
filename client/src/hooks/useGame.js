@@ -1,9 +1,12 @@
 import { useEffect, useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { useAuthStore } from '../store/authStore';
 import { getSocket } from '../lib/socket';
 import { toast } from '../components/ui/index';
+import { play } from '../lib/sounds';
 
 export function useGame(roomId) {
+  const userId = useAuthStore((s) => s.user?.id);
   const {
     setRoom,
     addPlayer,
@@ -31,9 +34,22 @@ export function useGame(roomId) {
     socket.on('player_left', ({ playerId }) => removePlayer(playerId));
     socket.on('player_ready', ({ readyPlayers }) => setReadyPlayers(readyPlayers));
 
-    socket.on('game_started', (data) => startGame(data));
-    socket.on('dice_rolled', (data) => applyDiceRolled(data));
-    socket.on('dice_set_aside', (data) => applyDiceSetAside(data));
+    socket.on('game_started', (data) => {
+      startGame(data);
+      play('chime');
+    });
+    socket.on('dice_rolled', (data) => {
+      applyDiceRolled(data);
+      // Individual clacks come from each <Die> as it lands. Shooting the
+      // moon is a separate, larger moment, so it gets its own peal.
+      if (data.shotTheMoon) {
+        setTimeout(() => play('moon'), 360);
+      }
+    });
+    socket.on('dice_set_aside', (data) => {
+      applyDiceSetAside(data);
+      play('thunk');
+    });
     socket.on('turn_changed', ({ currentPlayerId }) => setCurrentPlayer(currentPlayerId));
     socket.on('round_result', (data) => setRoundResult(data));
     socket.on('tie_replay', (data) => applyTieReplay(data));
@@ -44,7 +60,14 @@ export function useGame(roomId) {
     socket.on('player_disconnected', () => {
       // Seat is held during the grace window; no state change needed.
     });
-    socket.on('game_over', (data) => setGameOver(data));
+    socket.on('game_over', (data) => {
+      setGameOver(data);
+      // Peal if you won, fall if you didn't. Moon already played at roll time.
+      setTimeout(() => {
+        if (data.winnerId && data.winnerId === userId) play('peal');
+        else if (data.winnerId) play('fall');
+      }, 220);
+    });
     socket.on('chat_message', (msg) => addChatMessage(msg));
 
     const onError = (err) => {
@@ -81,6 +104,7 @@ export function useGame(roomId) {
     };
   }, [
     roomId,
+    userId,
     setRoom,
     addPlayer,
     removePlayer,
