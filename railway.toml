@@ -3,7 +3,9 @@ builder = "NIXPACKS"
 buildCommand = "cd server && npm install && npx prisma generate"
 
 [deploy]
-startCommand = "cd server && npx prisma migrate deploy && node src/app.js"
+# Seed is idempotent (upsert) — running on every boot is safe and ensures
+# the seeded users (bryan, admin, players, house) exist after a fresh DB.
+startCommand = "cd server && npx prisma migrate deploy && (npm run db:seed || echo 'seed failed, continuing') && node src/app.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"

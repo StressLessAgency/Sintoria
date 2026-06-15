@@ -17,6 +17,6 @@
     }
   },
   "deploy": {
-    "startCommand": "cd server && npx prisma migrate deploy && node src/app.js"
+    "startCommand": "cd server && npx prisma migrate deploy && (npm run db:seed || echo 'seed failed, continuing') && node src/app.js"
   }
 }
